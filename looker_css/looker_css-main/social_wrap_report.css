@@ -1,0 +1,118 @@
+#tooltip {
+  position: absolute;
+  width: auto;
+  height: auto;
+  padding: 5px;
+  background-color: white;
+  -webkit-border-radius: 4px;
+  -moz-border-radius: 4px;
+  border-radius: 4px;
+  -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  font-family: sans-serif;
+  font-size: 12px;
+  z-index: 2;
+}
+
+.tooltipTable {
+  font-family: Open Sans, Helvetica, Arial, sans-serif;
+  border: 0px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.focus {
+  font-weight: bold;
+}
+
+.hidden {
+  display: none;
+}
+
+.hover {
+  background-color: #ffffbb;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    border: 2px solid #d1d1d1;
+}
+
+thead tr:first-child {
+    background-color: #4d4d4d;
+    text-transform: uppercase;
+}
+
+thead tr:first-child th {
+    color: white;
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-weight: bold;
+}
+
+thead tr:first-child th:first-child {
+    text-align: left;
+    width: 10%;
+}
+
+thead tr:not(:first-child) th:first-child {
+    background-color: #cc0062;
+    color: white;
+    font-weight: bold;
+    text-align: left;
+    width: 10%;
+}
+
+thead tr:not(:first-child) th {
+    background-color: inherit;
+    color: inherit;
+    padding: 12px;
+    border: 1px solid #ddd;
+    text-align: center;
+    font-weight: normal;
+}
+
+tbody td:first-child {
+    background-color: #cc0062;
+    color: white;
+    font-weight: bold;
+    text-align: left;
+    width: 10%;
+}
+
+tbody td:not(:first-child) {
+    text-align: center;
+}
+
+tbody tr:nth-child(odd) {
+    background-color: #f8f8f8;
+}
+
+tbody tr:nth-child(even) {
+    background-color: white;
+}
+
+tbody td {
+    padding: 12px;
+    border: 1px solid #ddd;
+    position: relative;
+}
+
+tbody td:hover::after {
+    content: attr(data-value);
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 5px;
+    border-radius: 5px;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 10;
+}
