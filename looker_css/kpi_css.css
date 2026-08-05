@@ -1,85 +1,73 @@
-/* ===== Pure-CSS KPI cards for Looker "Table (Report)" viz — no measure html needed ===== */
-/* Host this file, get a githack CDN URL, and paste the URL into the tile's
-   "Load custom CSS from" field. The Table (Report) viz IGNORES per-measure html:,
-   so all styling must live here and target the native table cells. */
+/* ===== Pure-CSS KPI cards for Looker "Table (Report)" viz — no measure html ===== */
+/* Host this file, get a githack CDN URL, paste it into the tile's
+   Theme -> "Load custom CSS from" field (same as the FLIGHT table).
 
-/* Hide the header row so only the cards show */
+   REQUIREMENTS on the tile:
+   - Turn OFF row numbers so column 1 = the first measure.
+   - Clear the `html:` on each KPI measure (or set it to just {{ rendered_value }}).
+     The Table (Report) viz can't render html: — it flattens it to text, which pulls the
+     label into the cell and makes the name show twice. With html cleared, the cell holds
+     only the number and this CSS supplies the icon + label.
+   - Load this CSS ONLY on the card tile, not a shared theme, or it will restyle other tiles.
+
+   Layout: white-circle icon badge + label on the top row, big value below.
+   nth-child(N) = the Nth column, so the per-column order below must match the tile. */
+
 thead { display: none !important; }
-
-/* Turn the single data row into a row of cards */
 table { width: 100%; height: 100%; border-collapse: separate; border-spacing: 8px; }
 tbody, tbody tr { height: 100%; }
 
-/* Base card (applies to every value cell) */
+/* Base card */
 tbody td {
   height: 100%;
-  vertical-align: middle;
-  text-align: center;
+  vertical-align: top;
+  text-align: left;
   border-radius: 10px;
   color: #fff;
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  font-size: 32px;
+  font-size: 30px;         /* the value */
   font-weight: 800;
   line-height: 1.05;
-  padding: 16px 12px;
+  padding: 16px 18px;
   white-space: nowrap;
 }
 
-/* Icon badge (white circle) above the value */
+/* Top row: white circle badge (icon) + label, side by side */
 tbody td::before {
-  content: "";
   display: block;
-  width: 46px; height: 46px;
-  margin: 0 auto 10px;
-  border-radius: 50%;
-  background-color: rgba(255,255,255,.94);
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 28px 28px;
+  padding-left: 58px;      /* clears the badge */
+  min-height: 44px;
+  line-height: 44px;       /* vertically centers label against the badge */
+  margin-bottom: 14px;
+  font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  background-repeat: no-repeat, no-repeat;
+  background-position: 9px 9px, 0 0;       /* icon inside circle, circle at left */
+  background-size: 26px 26px, 44px 44px;
 }
 
-/* Label under the value */
-tbody td::after {
-  display: block;
-  margin-top: 10px;
-  font-size: 14px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
-
-/* ===== Per-column: color + icon + label. nth-child(N) = the Nth column,
-   so the ORDER here must match the tile's column order. Turn OFF row numbers
-   so column 1 is the first measure. ===== */
+/* ===== Per-column: color + icon + label (order must match the tile's columns) ===== */
 tbody td:nth-child(1) { background: linear-gradient(135deg, #14B8A6, #0f8f80); }
-tbody td:nth-child(1)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/impressions.svg'); }
-tbody td:nth-child(1)::after { content: "Impressions"; }
+tbody td:nth-child(1)::before { content: "Impressions"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/impressions.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
 tbody td:nth-child(2) { background: linear-gradient(135deg, #3B82F6, #2e66c2); }
-tbody td:nth-child(2)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/reach.svg'); }
-tbody td:nth-child(2)::after { content: "Reach"; }
+tbody td:nth-child(2)::before { content: "Reach"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/reach.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
 tbody td:nth-child(3) { background: linear-gradient(135deg, #6366F1, #4d50bc); }
-tbody td:nth-child(3)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/frequency.svg'); }
-tbody td:nth-child(3)::after { content: "Frequency"; }
+tbody td:nth-child(3)::before { content: "Frequency"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/frequency.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
 tbody td:nth-child(4) { background: linear-gradient(135deg, #8B5CF6, #6c48c0); }
-tbody td:nth-child(4)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/clicks.svg'); }
-tbody td:nth-child(4)::after { content: "Clicks"; }
+tbody td:nth-child(4)::before { content: "Clicks"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/clicks.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
 tbody td:nth-child(5) { background: linear-gradient(135deg, #06B6D4, #058ea6); }
-tbody td:nth-child(5)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/ctr.svg'); }
-tbody td:nth-child(5)::after { content: "CTR"; }
+tbody td:nth-child(5)::before { content: "CTR"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/ctr.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
 tbody td:nth-child(6) { background: linear-gradient(135deg, #F97316, #c25a11); }
-tbody td:nth-child(6)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/video_completes.svg'); }
-tbody td:nth-child(6)::after { content: "Video Completes"; }
+tbody td:nth-child(6)::before { content: "Video Completes"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/video_completes.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
 tbody td:nth-child(7) { background: linear-gradient(135deg, #EC4899, #b83877); }
-tbody td:nth-child(7)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/vcr.svg'); }
-tbody td:nth-child(7)::after { content: "VCR"; }
+tbody td:nth-child(7)::before { content: "VCR"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/vcr.svg'), radial-gradient(circle at 22px 22px, rgba(255,255,255,.94) 21px, transparent 22px); }
 
-/* --- Extra measures (add a column + move its nth-child number to match position) --- */
-/* Revenue  #22C55E / #1a9a49  revenue.svg */
-/* Spend    #F59E0B / #bf7c08  spend.svg */
-/* CPM      #0D9488 / #0a736a  cpm.svg */
+/* --- Other measures (color / darker / icon) — add a column + renumber to match position ---
+   Revenue  #22C55E / #1a9a49  revenue.svg
+   Spend    #F59E0B / #bf7c08  spend.svg
+   CPM      #0D9488 / #0a736a  cpm.svg   */
