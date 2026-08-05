@@ -1,0 +1,38 @@
+/* ===== Hide the Table (Report) chrome so only the card shows ===== */
+thead, th, .header-cell, .column-headers, .gridHeader { display: none !important; }
+
+/* Make the table + cell stretch so the card fills the whole tile */
+table { width: 100%; height: 100%; border-collapse: collapse; border: 0; }
+tbody, tbody tr { width: 100%; height: 100%; }
+td, .table-cell, .cell {
+  padding: 6px !important; border: 0 !important;
+  width: 100%; height: 100%; vertical-align: top;
+}
+
+/* ===== The KPI card ===== */
+.kpi-card {
+  box-sizing: border-box; display: flex; flex-direction: column;
+  justify-content: space-between; width: 100%; height: 100%;
+  min-height: 110px; padding: 16px; border-radius: 10px;
+  font-family: Arial, Helvetica, sans-serif; color: #ffffff; overflow: hidden;
+}
+.kpi-top { display: flex; align-items: center; gap: 10px; }
+.kpi-badge {
+  display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: #ffffff;
+}
+.kpi-badge img { width: 26px; height: 26px; display: block; }
+.kpi-label { font-size: 15px; font-weight: 600; letter-spacing: .01em; }
+.kpi-value { font-size: clamp(28px, 7vw, 46px); font-weight: 700; line-height: 1; margin-top: auto; }
+
+/* ===== Per-measure gradient (add one line per measure) ===== */
+.kpi-impressions    { background: linear-gradient(135deg, #14B8A6, #0f8f80); }
+.kpi-reach          { background: linear-gradient(135deg, #3B82F6, #2e66c2); }
+.kpi-revenue        { background: linear-gradient(135deg, #22C55E, #1a9a49); }
+.kpi-spend          { background: linear-gradient(135deg, #F59E0B, #bf7c08); }
+.kpi-cpm            { background: linear-gradient(135deg, #0D9488, #0a736a); }
+.kpi-frequency      { background: linear-gradient(135deg, #6366F1, #4d50bc); }
+.kpi-clicks         { background: linear-gradient(135deg, #8B5CF6, #6c48c0); }
+.kpi-ctr            { background: linear-gradient(135deg, #06B6D4, #058ea6); }
+.kpi-video-completes{ background: linear-gradient(135deg, #F97316, #c25a11); }
+.kpi-vcr            { background: linear-gradient(135deg, #EC4899, #b83877); }
