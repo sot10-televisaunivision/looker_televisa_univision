@@ -1,38 +1,85 @@
-/* ===== Hide the Table (Report) chrome so only the card shows ===== */
-thead, th, .header-cell, .column-headers, .gridHeader { display: none !important; }
+/* ===== Pure-CSS KPI cards for Looker "Table (Report)" viz — no measure html needed ===== */
+/* Host this file, get a githack CDN URL, and paste the URL into the tile's
+   "Load custom CSS from" field. The Table (Report) viz IGNORES per-measure html:,
+   so all styling must live here and target the native table cells. */
 
-/* Make the table + cell stretch so the card fills the whole tile */
-table { width: 100%; height: 100%; border-collapse: collapse; border: 0; }
-tbody, tbody tr { width: 100%; height: 100%; }
-td, .table-cell, .cell {
-  padding: 6px !important; border: 0 !important;
-  width: 100%; height: 100%; vertical-align: top;
+/* Hide the header row so only the cards show */
+thead { display: none !important; }
+
+/* Turn the single data row into a row of cards */
+table { width: 100%; height: 100%; border-collapse: separate; border-spacing: 8px; }
+tbody, tbody tr { height: 100%; }
+
+/* Base card (applies to every value cell) */
+tbody td {
+  height: 100%;
+  vertical-align: middle;
+  text-align: center;
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.05;
+  padding: 16px 12px;
+  white-space: nowrap;
 }
 
-/* ===== The KPI card ===== */
-.kpi-card {
-  box-sizing: border-box; display: flex; flex-direction: column;
-  justify-content: space-between; width: 100%; height: 100%;
-  min-height: 110px; padding: 16px; border-radius: 10px;
-  font-family: Arial, Helvetica, sans-serif; color: #ffffff; overflow: hidden;
+/* Icon badge (white circle) above the value */
+tbody td::before {
+  content: "";
+  display: block;
+  width: 46px; height: 46px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background-color: rgba(255,255,255,.94);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 28px 28px;
 }
-.kpi-top { display: flex; align-items: center; gap: 10px; }
-.kpi-badge {
-  display: flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: #ffffff;
-}
-.kpi-badge img { width: 26px; height: 26px; display: block; }
-.kpi-label { font-size: 15px; font-weight: 600; letter-spacing: .01em; }
-.kpi-value { font-size: clamp(28px, 7vw, 46px); font-weight: 700; line-height: 1; margin-top: auto; }
 
-/* ===== Per-measure gradient (add one line per measure) ===== */
-.kpi-impressions    { background: linear-gradient(135deg, #14B8A6, #0f8f80); }
-.kpi-reach          { background: linear-gradient(135deg, #3B82F6, #2e66c2); }
-.kpi-revenue        { background: linear-gradient(135deg, #22C55E, #1a9a49); }
-.kpi-spend          { background: linear-gradient(135deg, #F59E0B, #bf7c08); }
-.kpi-cpm            { background: linear-gradient(135deg, #0D9488, #0a736a); }
-.kpi-frequency      { background: linear-gradient(135deg, #6366F1, #4d50bc); }
-.kpi-clicks         { background: linear-gradient(135deg, #8B5CF6, #6c48c0); }
-.kpi-ctr            { background: linear-gradient(135deg, #06B6D4, #058ea6); }
-.kpi-video-completes{ background: linear-gradient(135deg, #F97316, #c25a11); }
-.kpi-vcr            { background: linear-gradient(135deg, #EC4899, #b83877); }
+/* Label under the value */
+tbody td::after {
+  display: block;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+/* ===== Per-column: color + icon + label. nth-child(N) = the Nth column,
+   so the ORDER here must match the tile's column order. Turn OFF row numbers
+   so column 1 is the first measure. ===== */
+tbody td:nth-child(1) { background: linear-gradient(135deg, #14B8A6, #0f8f80); }
+tbody td:nth-child(1)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/impressions.svg'); }
+tbody td:nth-child(1)::after { content: "Impressions"; }
+
+tbody td:nth-child(2) { background: linear-gradient(135deg, #3B82F6, #2e66c2); }
+tbody td:nth-child(2)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/reach.svg'); }
+tbody td:nth-child(2)::after { content: "Reach"; }
+
+tbody td:nth-child(3) { background: linear-gradient(135deg, #6366F1, #4d50bc); }
+tbody td:nth-child(3)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/frequency.svg'); }
+tbody td:nth-child(3)::after { content: "Frequency"; }
+
+tbody td:nth-child(4) { background: linear-gradient(135deg, #8B5CF6, #6c48c0); }
+tbody td:nth-child(4)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/clicks.svg'); }
+tbody td:nth-child(4)::after { content: "Clicks"; }
+
+tbody td:nth-child(5) { background: linear-gradient(135deg, #06B6D4, #058ea6); }
+tbody td:nth-child(5)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/ctr.svg'); }
+tbody td:nth-child(5)::after { content: "CTR"; }
+
+tbody td:nth-child(6) { background: linear-gradient(135deg, #F97316, #c25a11); }
+tbody td:nth-child(6)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/video_completes.svg'); }
+tbody td:nth-child(6)::after { content: "Video Completes"; }
+
+tbody td:nth-child(7) { background: linear-gradient(135deg, #EC4899, #b83877); }
+tbody td:nth-child(7)::before { background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg/vcr.svg'); }
+tbody td:nth-child(7)::after { content: "VCR"; }
+
+/* --- Extra measures (add a column + move its nth-child number to match position) --- */
+/* Revenue  #22C55E / #1a9a49  revenue.svg */
+/* Spend    #F59E0B / #bf7c08  spend.svg */
+/* CPM      #0D9488 / #0a736a  cpm.svg */
