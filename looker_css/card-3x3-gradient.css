@@ -1,0 +1,68 @@
+/* =====================================================================
+   MULTI-KPI CARD (3x3) - gradient - Looker "Table (Report)" tile
+   =====================================================================
+   9 measures wrapped into a 3-column grid of cards.
+   Column order (must match the tile): Impressions, Reach, Revenue, Spend, CPM, Frequency, Clicks, CTR, VCR.
+
+   PER TILE: turn OFF row numbers; clear each measure's html: (or set to
+   {{ rendered_value }}); then Theme -> "Load custom CSS from" -> this
+   file's URL, on THIS tile only (position-based rules bleed otherwise).
+   ===================================================================== */
+
+/* turn the table into block elements so the data row can be a CSS grid */
+table, thead, tbody, tr { display: block !important; }
+thead { display: none !important; }
+th { display: none !important; }
+table { width: 100%; height: 100%; }
+tbody tr { display: grid !important; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; height: 100%; box-sizing: border-box; }
+
+tbody td {
+  position: relative; box-sizing: border-box;
+  border-radius: 12px; color: #fff;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 30px; font-weight: 800; line-height: 1.05;
+  padding: 48px 16px 18px; min-height: 104px;
+  text-align: center !important; vertical-align: middle !important;
+  white-space: nowrap;
+}
+tbody td > * {
+  text-align: center !important; float: none !important;
+  width: 100% !important; margin-left: auto !important; margin-right: auto !important;
+}
+tbody td::before {
+  position: absolute; top: 15px; left: 16px; right: 14px; text-align: left;
+  padding-left: 32px; min-height: 24px; display: flex; align-items: center;
+  white-space: normal;
+  font-size: 12.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; line-height: 1.15;
+  background-repeat: no-repeat; background-position: left center; background-size: 22px 22px;
+}
+
+tbody td:nth-child(1) { background: linear-gradient(135deg, #14B8A6, #0f8f80); }
+tbody td:nth-child(1)::before { content: "Impressions"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/impressions.svg'); }
+
+tbody td:nth-child(2) { background: linear-gradient(135deg, #3B82F6, #2e66c2); }
+tbody td:nth-child(2)::before { content: "Reach"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/reach.svg'); }
+
+tbody td:nth-child(3) { background: linear-gradient(135deg, #22C55E, #1a9a49); }
+tbody td:nth-child(3)::before { content: "Revenue"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/revenue.svg'); }
+
+tbody td:nth-child(4) { background: linear-gradient(135deg, #F59E0B, #bf7c08); }
+tbody td:nth-child(4)::before { content: "Spend"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/spend.svg'); }
+
+tbody td:nth-child(5) { background: linear-gradient(135deg, #0D9488, #0a736a); }
+tbody td:nth-child(5)::before { content: "CPM"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/cpm.svg'); }
+
+tbody td:nth-child(6) { background: linear-gradient(135deg, #6366F1, #4d50bc); }
+tbody td:nth-child(6)::before { content: "Frequency"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/frequency.svg'); }
+
+tbody td:nth-child(7) { background: linear-gradient(135deg, #8B5CF6, #6c48c0); }
+tbody td:nth-child(7)::before { content: "Clicks"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/clicks.svg'); }
+
+tbody td:nth-child(8) { background: linear-gradient(135deg, #06B6D4, #058ea6); }
+tbody td:nth-child(8)::before { content: "CTR"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/ctr.svg'); }
+
+tbody td:nth-child(9) { background: linear-gradient(135deg, #EC4899, #b83877); }
+tbody td:nth-child(9)::before { content: "VCR"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line-white/vcr.svg'); }
+
