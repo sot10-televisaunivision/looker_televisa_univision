@@ -1,0 +1,47 @@
+/* =====================================================================
+   MULTI-KPI CARD (2x2) - minimalist - Looker "Table (Report)" tile
+   =====================================================================
+   4 measures wrapped into a 2-column grid of cards.
+   Column order (must match the tile): Impressions, Reach, Revenue, Spend.
+
+   PER TILE: turn OFF row numbers; clear each measure's html: (or set to
+   {{ rendered_value }}); then Theme -> "Load custom CSS from" -> this
+   file's URL, on THIS tile only (position-based rules bleed otherwise).
+   ===================================================================== */
+
+/* turn the table into block elements so the data row can be a CSS grid */
+table, thead, tbody, tr { display: block !important; }
+thead { display: none !important; }
+th { display: none !important; }
+table { width: 100%; height: 100%; }
+tbody tr { display: grid !important; grid-template-columns: repeat(2, 1fr);
+  gap: 0px; height: 100%; box-sizing: border-box; }
+
+tbody tr { background: #fff; border-radius: 14px; overflow: hidden; }
+tbody td {
+  position: relative; box-sizing: border-box; background: #fff;
+  border-right: 1px solid #eef1f5; border-bottom: 1px solid #eef1f5;
+  color: #0f172a; font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 30px; font-weight: 800; line-height: 1.05;
+  padding: 46px 20px 22px; min-height: 104px;
+  text-align: left !important; vertical-align: bottom !important;
+  white-space: nowrap;
+}
+tbody td > * {
+  text-align: left !important; float: none !important;
+  width: 100% !important; margin: 0 !important;
+}
+tbody td::before {
+  position: absolute; top: 16px; left: 20px; right: 14px; text-align: left;
+  padding-left: 30px; min-height: 22px; display: flex; align-items: center;
+  white-space: normal; color: #64748b;
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; line-height: 1.15;
+  background-repeat: no-repeat; background-position: left center; background-size: 21px 21px;
+}
+
+tbody td:nth-child(1)::before { content: "Impressions"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line/impressions.svg'); }
+tbody td:nth-child(2)::before { content: "Reach"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line/reach.svg'); }
+tbody td:nth-child(3)::before { content: "Revenue"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line/revenue.svg'); }
+tbody td:nth-child(4)::before { content: "Spend"; background-image: url('https://raw.githubusercontent.com/sot10-televisaunivision/looker_televisa_univision/refs/heads/main/kpi-icons/svg-line/spend.svg'); }
+
