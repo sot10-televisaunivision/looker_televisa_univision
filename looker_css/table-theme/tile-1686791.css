@@ -42,17 +42,17 @@ tbody tr:hover td { background: #f0f6ff !important; }
 
 th:nth-child(1) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/placement.svg') !important; border-bottom-color: #BE123C !important; }
 tbody td:nth-child(1) { font-weight: 600 !important; color: #1e293b !important; }
-th:nth-child(2) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_views.svg') !important; border-bottom-color: #EF4444 !important; }
-th:nth-child(3) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_views.svg') !important; border-bottom-color: #EF4444 !important; }
-th:nth-child(4) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/engagements.svg') !important; border-bottom-color: #0EA5E9 !important; }
-th:nth-child(5) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/engagement_rate.svg') !important; border-bottom-color: #A855F7 !important; }
-th:nth-child(6) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/impressions.svg') !important; border-bottom-color: #14B8A6 !important; }
-th:nth-child(7) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_completes.svg') !important; border-bottom-color: #F97316 !important; }
-th:nth-child(8) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/vcr.svg') !important; border-bottom-color: #EC4899 !important; }
-th:nth-child(9) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/clicks.svg') !important; border-bottom-color: #8B5CF6 !important; }
-th:nth-child(10) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/ctr.svg') !important; border-bottom-color: #06B6D4 !important; }
-th:nth-child(11) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/platform.svg') !important; border-bottom-color: #4338CA !important; }
-tbody td:nth-child(11) { font-weight: 600 !important; color: #1e293b !important; }
-th:nth-child(12) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_thru_rate.svg') !important; border-bottom-color: #84CC16 !important; }
-th:nth-child(13) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/interest_opt.svg') !important; border-bottom-color: #7C3AED !important; }
-tbody td:nth-child(13) { font-weight: 600 !important; color: #1e293b !important; }
+th:nth-child(2) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/platform.svg') !important; border-bottom-color: #4338CA !important; }
+tbody td:nth-child(2) { font-weight: 600 !important; color: #1e293b !important; }
+th:nth-child(3) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/interest_opt.svg') !important; border-bottom-color: #7C3AED !important; }
+tbody td:nth-child(3) { font-weight: 600 !important; color: #1e293b !important; }
+th:nth-child(4) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_views.svg') !important; border-bottom-color: #EF4444 !important; }
+th:nth-child(5) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_views.svg') !important; border-bottom-color: #EF4444 !important; }
+th:nth-child(6) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/engagements.svg') !important; border-bottom-color: #0EA5E9 !important; }
+th:nth-child(7) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/engagement_rate.svg') !important; border-bottom-color: #A855F7 !important; }
+th:nth-child(8) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/impressions.svg') !important; border-bottom-color: #14B8A6 !important; }
+th:nth-child(9) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_completes.svg') !important; border-bottom-color: #F97316 !important; }
+th:nth-child(10) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/vcr.svg') !important; border-bottom-color: #EC4899 !important; }
+th:nth-child(11) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/clicks.svg') !important; border-bottom-color: #8B5CF6 !important; }
+th:nth-child(12) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/ctr.svg') !important; border-bottom-color: #06B6D4 !important; }
+th:nth-child(13) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_thru_rate.svg') !important; border-bottom-color: #84CC16 !important; }
