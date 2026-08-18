@@ -1,0 +1,58 @@
+/* =====================================================================
+   Social Benchmark Analysis (dashboard 2899) — table theme (Option B)
+   TILE: Content Type by Vertical  (id 1686792)
+   ---------------------------------------------------------------------
+   Position-based: the per-column rules below match THIS tile's column
+   order. Load this file on THIS tile only (Tile > Theme > "Load custom
+   CSS from"), not on the dashboard theme, or the column icons/colors
+   will land on the wrong columns of other tiles.
+   ===================================================================== */
+
+/* --- shared chrome (identical on every tile) --- */
+table {
+  border-collapse: collapse !important;
+  width: 100%;
+  font-family: 'Roboto','Helvetica Neue',Arial,sans-serif;
+}
+/* header cells are bare <th> (not inside <thead>) in this viz */
+th {
+  background-color: #f7f9fc !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  padding: 26px 10px 8px !important;      /* top room for the icon */
+  background-repeat: no-repeat !important;
+  background-position: center 6px !important;
+  background-size: 16px 16px !important;
+  border-bottom-width: 3px !important;
+  border-bottom-style: solid !important;
+  border-bottom-color: #cbd5e1 !important;
+  vertical-align: bottom !important;
+}
+tbody td {
+  padding: 8px 10px !important;
+  color: #334155 !important;
+  font-size: 12.5px !important;
+  border-bottom: 1px solid #eef1f5 !important;
+}
+tbody tr:nth-child(even) td { background: #fafbfd !important; }
+tbody tr:hover td { background: #f0f6ff !important; }
+
+/* --- per-column icon + brand-color underline --- */
+
+th:nth-child(1) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/content_type.svg') !important; border-bottom-color: #15803D !important; }
+tbody td:nth-child(1) { font-weight: 600 !important; color: #1e293b !important; }
+th:nth-child(2) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/vertical.svg') !important; border-bottom-color: #475569 !important; }
+tbody td:nth-child(2) { font-weight: 600 !important; color: #1e293b !important; }
+th:nth-child(3) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_views.svg') !important; border-bottom-color: #EF4444 !important; }
+th:nth-child(4) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_views.svg') !important; border-bottom-color: #EF4444 !important; }
+th:nth-child(5) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/engagements.svg') !important; border-bottom-color: #0EA5E9 !important; }
+th:nth-child(6) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/engagement_rate.svg') !important; border-bottom-color: #A855F7 !important; }
+th:nth-child(7) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/impressions.svg') !important; border-bottom-color: #14B8A6 !important; }
+th:nth-child(8) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_completes.svg') !important; border-bottom-color: #F97316 !important; }
+th:nth-child(9) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/vcr.svg') !important; border-bottom-color: #EC4899 !important; }
+th:nth-child(10) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/clicks.svg') !important; border-bottom-color: #8B5CF6 !important; }
+th:nth-child(11) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/ctr.svg') !important; border-bottom-color: #06B6D4 !important; }
+th:nth-child(12) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_thru_rate.svg') !important; border-bottom-color: #84CC16 !important; }
+th:nth-child(13) { background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/dim-svg/interest_opt.svg') !important; border-bottom-color: #7C3AED !important; }
+tbody td:nth-child(13) { font-weight: 600 !important; color: #1e293b !important; }
