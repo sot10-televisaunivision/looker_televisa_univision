@@ -37,6 +37,10 @@ tbody td {
 }
 tbody tr:nth-child(even) td { background: #fafbfd !important; }
 tbody tr:hover td { background: #f0f6ff !important; }
+/* Hide the header hover caption: this report-table viz pops a floating label
+   (div#tooltip) to the top-left echoing the column name whenever a header is
+   hovered. We keep the header text visible, so suppress the redundant caption. */
+#tooltip { display: none !important; }
 
 /* --- per-column icon + brand-color underline --- */
 
