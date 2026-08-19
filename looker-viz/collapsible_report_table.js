@@ -33,6 +33,15 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function keyify(name) { return String(name).replace(/[^a-zA-Z0-9]/g, "_"); }
+  function cssLen(v) { v = String(v == null ? "" : v).trim(); if (v === "") return ""; return /^\d+(\.\d+)?$/.test(v) ? v + "px" : v; }
+  function fontStyleCss(hc) {
+    var s = "";
+    if (hc.bold) s += "font-weight:700;";
+    if (hc.italic) s += "font-style:italic;";
+    if (hc.underline) s += "text-decoration:underline;";
+    if (hc.color) s += "color:" + hc.color + ";";
+    return s;
+  }
 
   // tiny value formatter for common Looker value_format strings
   function makeFormatter(vf) {
@@ -165,7 +174,7 @@
     var collapsed = container.__collapsedState || (container.__collapsedState = new Set());
 
     var fmt = {};
-    measures.forEach(function (mf) { fmt[mf.name] = makeFormatter(mf.value_format); });
+    measures.forEach(function (mf) { var nf = (headers[mf.name] || {}).numberFormat; fmt[mf.name] = makeFormatter(nf || mf.value_format); });
 
     // per-column min/max across leaf data (for bars + color scales)
     var stats = {};
@@ -273,7 +282,7 @@
       }
     }
 
-    var thead = buildThead(dims, measures, mcols, pivots, headers);
+    var thead = buildThead(dims, measures, mcols, pivots, headers, config.truncateHeaders);
 
     var caretOpen = "\u25be", caretClosed = "\u25b8";
     var body = vis.map(function (row, ri) {
@@ -284,10 +293,16 @@
         if (g.empty) { tds += '<td class="dimc empty"></td>'; continue; }
         var caret = g.caret ? '<span class="caret" data-path="' + esc(g.path) + '">' + (g.isCollapsed ? caretClosed : caretOpen) + "</span> " : "";
         var dval = g.cell ? cellDisplay(g.cell, null, utils) : esc(g.value);
-        tds += '<td class="dimc" rowspan="' + g.span + '">' + caret + dval + "</td>";
+        var dhc = headers[dims[cc].name] || {};
+        var dstyle = fontStyleCss(dhc);
+        if (dhc.background) dstyle += "background:" + dhc.background + ";";
+        if (dhc.width) dstyle += "width:" + cssLen(dhc.width) + ";";
+        if (dhc.textAlign) dstyle += "text-align:" + dhc.textAlign + ";";
+        var dtitle = dhc.tooltip ? ' title="' + esc((dhc.label || dims[cc].label_short || dims[cc].label || dims[cc].name) + ": " + g.value) + '"' : "";
+        tds += '<td class="dimc" rowspan="' + g.span + '" style="' + dstyle + '"' + dtitle + '>' + caret + dval + "</td>";
       }
       var mcls = row.kind === "data" ? "mnum" : "mnum agg";
-      mcols.forEach(function (mc) { tds += measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils); });
+      mcols.forEach(function (mc) { tds += measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils, headers); });
       var rowCls = row.kind === "data" ? "datarow" : (row.kind === "collapsed" ? "collapsedrow" : "subrow");
       return '<tr class="' + rowCls + '">' + tds + "</tr>";
     }).join("");
@@ -297,14 +312,15 @@
   };
 
   // ---- header (supports pivot-driven spanning header row) ----
-  function buildThead(dims, measures, mcols, pivots, headers) {
+  function buildThead(dims, measures, mcols, pivots, headers, tHead) {
+    var opts = { truncateHeaders: !!tHead };
     var hHeight = 0;
     dims.concat(measures).forEach(function (f) { var h = (headers[f.name] || {}).headerHeight; if (h) hHeight = Math.max(hHeight, h); });
 
     if (pivots && pivots.length) {
       // top row: dim columns rowspan 2, then a spanning cell per pivot value
       var top = "<tr>";
-      dims.forEach(function (f, idx) { top += headerCell(f, true, headers, hHeight, 2, 1); });
+      dims.forEach(function (f, idx) { top += headerCell(f, true, headers, hHeight, 2, 1, opts); });
       pivots.forEach(function (p) {
         var lbl = esc((p.metadata && p.metadata[Object.keys(p.metadata)[0]] && p.metadata[Object.keys(p.metadata)[0]].value) || p.label || p.key);
         top += '<th class="pivgrp" colspan="' + measures.length + '">' + lbl + "</th>";
@@ -312,21 +328,25 @@
       top += "</tr>";
       // second row: one measure header per pivot value
       var bottom = "<tr>";
-      mcols.forEach(function (mc) { bottom += headerCell(mc.mf, false, headers, hHeight, 1, 1); });
+      mcols.forEach(function (mc) { bottom += headerCell(mc.mf, false, headers, hHeight, 1, 1, opts); });
       bottom += "</tr>";
       return "<thead>" + top + bottom + "</thead>";
     }
-    var cells = dims.map(function (f) { return headerCell(f, true, headers, hHeight, 1, 1); })
-      .concat(measures.map(function (f) { return headerCell(f, false, headers, hHeight, 1, 1); }));
+    var cells = dims.map(function (f) { return headerCell(f, true, headers, hHeight, 1, 1, opts); })
+      .concat(measures.map(function (f) { return headerCell(f, false, headers, hHeight, 1, 1, opts); }));
     return "<thead><tr>" + cells.join("") + "</tr></thead>";
   }
 
   // ---- shared cell/header renderers ----
-  function measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils) {
+  function measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils, headers) {
     var mf = mc.mf;
     var v = row.measures[mc.colId];
     var st = stats[mc.colId] || { min: 0, max: 0 };
-    var tdStyle = "";
+    var hc = (headers && headers[mf.name]) || {};
+    var tdStyle = fontStyleCss(hc);
+    if (hc.background) tdStyle += "background:" + hc.background + ";";
+    if (hc.textAlign) tdStyle += "text-align:" + hc.textAlign + ";";
+    if (hc.width) tdStyle += "width:" + cssLen(hc.width) + ";";
     var content;
     if (row.kind === "data") content = cellDisplay(mcell(row.row, mf.name, mc.pkey), fmt[mf.name], utils);
     else content = esc(fmt[mf.name](v));
@@ -349,23 +369,26 @@
       var pct = Math.max(0, Math.min(100, (Number(v) / st.max) * 100));
       inner = '<div class="cellbar" style="width:' + pct + "%;background:" + (cv.barColor || "#bfdbfe") + ';"></div>' + inner;
     }
-    return '<td class="' + mcls + '" style="' + tdStyle + '">' + inner + "</td>";
+    var mtitle = hc.tooltip ? ' title="' + esc((hc.label || mf.label_short || mf.label || mf.name) + ": " + fmt[mf.name](v)) + '"' : "";
+    return '<td class="' + mcls + '" style="' + tdStyle + '"' + mtitle + '>' + inner + "</td>";
   }
 
-  function headerCell(f, isDim, headers, hHeight, rowspan, colspan) {
+  function headerCell(f, isDim, headers, hHeight, rowspan, colspan, opts) {
+    opts = opts || {};
     var hc = headers[f.name] || {};
     var pos = hc.imagePos || "above", size = hc.imageSize || 20, pad = hc.imagePad != null ? hc.imagePad : 4;
     var align = hc.textAlign || (isDim ? "left" : "right");
-    var text = hc.suppressText ? "" : esc(f.label_short || f.label || f.name);
-    var img = hc.image ? '<img src="' + esc(hc.image) + '" alt="' + esc(hc.alt || text) + '" title="' + esc(hc.alt || "") +
-      '" style="width:' + size + "px;height:" + size + 'px;object-fit:contain;" onerror="this.style.display=\'none\'"/>' : "";
+    var base = hc.label || f.label_short || f.label || f.name;
+    var text = hc.suppressText ? "" : esc(base);
+    var img = hc.image ? '<img src="' + esc(hc.image) + '" alt="' + esc(base) + '"' +
+      ' style="width:' + size + "px;height:" + size + 'px;object-fit:contain;" onerror="this.style.display=\'none\'"/>' : "";
     var flexDir = { above: "column", below: "column-reverse", left: "row", right: "row-reverse" }[pos] || "column";
     var justify = align === "right" ? "flex-end" : align === "center" ? "center" : "flex-start";
-    var style = "display:flex;flex-direction:" + flexDir + ";align-items:center;justify-content:" + justify + ";gap:" + pad + "px;" +
-      (hc.color ? "color:" + hc.color + ";" : "") + (hc.fontSize ? "font-size:" + hc.fontSize + "px;" : "");
-    var thStyle = (hc.background ? "background:" + hc.background + ";" : "") + "text-align:" + align + ";" + (hHeight ? "height:" + hHeight + "px;" : "");
+    var style = "display:flex;flex-direction:" + flexDir + ";align-items:center;justify-content:" + justify + ";gap:" + pad + "px;";
+    var textSpan = text ? '<span' + (opts.truncateHeaders ? ' class="trunc"' : "") + '>' + text + "</span>" : "";
+    var thStyle = "text-align:" + align + ";" + (hHeight ? "height:" + hHeight + "px;" : "") + (hc.width ? "width:" + cssLen(hc.width) + ";" : "");
     var attrs = (rowspan && rowspan > 1 ? ' rowspan="' + rowspan + '"' : "") + (colspan && colspan > 1 ? ' colspan="' + colspan + '"' : "");
-    return '<th' + attrs + ' style="' + thStyle + '"><div style="' + style + '">' + img + (text ? '<span>' + text + "</span>" : "") + "</div></th>";
+    return '<th' + attrs + ' style="' + thStyle + '"><div style="' + style + '">' + img + textSpan + "</div></th>";
   }
 
   // ---- transpose: measures as rows, dimension combos as columns ----
@@ -398,12 +421,14 @@
       var hc = headers[mf.name] || {};
       var size = hc.imageSize || 18;
       var icon = hc.image ? '<img src="' + esc(hc.image) + '" style="width:' + size + "px;height:" + size + 'px;object-fit:contain;vertical-align:middle;margin-right:6px;" onerror="this.style.display=\'none\'"/>' : "";
-      var label = hc.suppressText ? "" : esc(mf.label_short || mf.label || mf.name);
+      var base = hc.label || mf.label_short || mf.label || mf.name;
+      var label = hc.suppressText ? "" : esc(base);
       var rowHtml = '<th class="trowh">' + icon + label + "</th>";
       var st = stats[mf.name] || { min: 0, max: 0 };
       data.forEach(function (r) {
         var v = (r[mf.name] || {}).value;
-        var tdStyle = "", inner = '<span class="cellval">' + cellDisplay(r[mf.name] || {}, fmt[mf.name], utils) + "</span>";
+        var tdStyle = fontStyleCss(hc); if (hc.background) tdStyle += "background:" + hc.background + ";";
+        var inner = '<span class="cellval">' + cellDisplay(r[mf.name] || {}, fmt[mf.name], utils) + "</span>";
         var cf = condFmt[mf.name];
         if (cf && cf.type === "scale" && v != null && !isNaN(v) && st.max > st.min) {
           var t = Math.max(0, Math.min(1, (Number(v) - st.min) / (st.max - st.min)));
@@ -432,8 +457,10 @@
 
   function styleBlock(config) {
     var bodyFont = config.bodyFontSize || 12;
-    return '<style>' +
-      '.crt{border-collapse:collapse;width:100%;font-family:Roboto,Arial,sans-serif;font-size:' + bodyFont + 'px;color:#1f2937;}' +
+    var minW = config.minColWidth || 0;
+    var sizeToFit = config.sizeToFit !== false;
+    var truncate = config.truncate !== false;
+    var css = '.crt{border-collapse:collapse;width:' + (sizeToFit ? '100%' : 'auto') + ';font-family:Roboto,Arial,sans-serif;font-size:' + bodyFont + 'px;color:#1f2937;}' +
       '.crt th{border-bottom:2px solid #cbd5e1;padding:6px 10px;background:#f8fafc;position:sticky;top:0;z-index:2;}' +
       '.crt th.pivgrp{text-align:center;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;font-weight:700;}' +
       '.crt td{padding:5px 10px;border-bottom:1px solid #eef2f7;}' +
@@ -449,7 +476,10 @@
       '.crt td.empty{background:#fff;}' +
       '.crt.transposed th.trowh{text-align:left;background:#fff;font-weight:600;white-space:nowrap;}' +
       '.crt.transposed th.tcol{text-align:right;} .crt.transposed th.corner{background:#f8fafc;}' +
-      '</style>';
+      '.crt th .trunc{display:inline-block;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;}';
+    if (truncate) css += '.crt td.dimc{max-width:260px;overflow:hidden;text-overflow:ellipsis;}';
+    if (minW > 0) css += '.crt th,.crt td{min-width:' + minW + 'px;}';
+    return '<style>' + css + '</style>';
   }
 
   function wireCarets(container, data, queryResponse, config, utils) {
@@ -466,11 +496,11 @@
   }
 
   function renderFlat(container, data, mcols, fmt, headers, cellViz, condFmt, stats, config, utils, pivots, measures) {
-    var thead = buildThead([], measures, mcols, pivots, headers);
+    var thead = buildThead([], measures, mcols, pivots, headers, config.truncateHeaders);
     var body = data.map(function (r) {
       var mv = {}; mcols.forEach(function (mc) { mv[mc.colId] = mval(r, mc.mf.name, mc.pkey); });
       var tds = mcols.map(function (mc) {
-        return measureCell(mc, { kind: "data", row: r, measures: mv }, fmt, stats, cellViz, condFmt, "mnum", utils);
+        return measureCell(mc, { kind: "data", row: r, measures: mv }, fmt, stats, cellViz, condFmt, "mnum", utils, headers);
       }).join("");
       return "<tr class='datarow'>" + tds + "</tr>";
     }).join("");
@@ -497,61 +527,92 @@
           var options = {};
           var TAB = { table: "Table", dims: "Dimensions", meas: "Measures" };
 
+          // Each field's heading is folded into its FIRST control's label
+          // (a separator line + the field name), because the custom-viz
+          // options API has no standalone divider/heading control.
+          function headingLabel(f) {
+            var fn = (f.label_short || f.label || f.name);
+            return "\u2500\u2500\u2500\u2500\u2500  " + fn.toUpperCase() + "  \u2500\u2500\u2500\u2500\u2500\nLabel";
+          }
+
           // ---------- TABLE tab (global) ----------
           var to = 1;
           options.transpose = { type: "boolean", label: "Transpose (measures as rows)", default: false, section: TAB.table, order: to++ };
           options.showSubtotals = { type: "boolean", label: "Show subtotals", default: true, section: TAB.table, order: to++ };
-          options.subtotalDepth = { type: "number", label: "Subtotal depth (0 = all levels)", default: 0, section: TAB.table, order: to++, display_size: "half" };
+          var depthVals = [{ "All levels": "" }];
+          dims.forEach(function (f) { var o = {}; o[(f.label_short || f.label || f.name)] = f.name; depthVals.push(o); });
+          options.subtotalDepth = { type: "string", label: "Subtotal Depth", display: "select", values: depthVals, default: "", section: TAB.table, order: to++ };
+          options.bodyFontSize = { type: "number", label: "Body font size (px)", default: 12, section: TAB.table, order: to++, display_size: "half" };
           options.defaultCollapsed = { type: "boolean", label: "Start collapsed", default: false, section: TAB.table, order: to++, display_size: "half" };
-          options.calcOthers = { type: "boolean", label: "Calculate Others (Top-N + Others row)", default: false, section: TAB.table, order: to++, display_size: "half" };
-          options.calcOthersLimit = { type: "number", label: "Keep top N groups", default: 10, section: TAB.table, order: to++, display_size: "half" };
-          options.bodyFontSize = { type: "number", label: "Body font size (px)", default: 12, section: TAB.table, order: to++ };
+          options.calcOthers = { type: "boolean", label: "Calculate Others (Top-N + Others row)", default: false, section: TAB.table, order: to++ };
+          options.calcOthersLimit = { type: "number", label: "Keep top N groups", default: 10, section: TAB.table, order: to++ };
+          options.truncate = { type: "boolean", label: "Truncate text", default: true, section: TAB.table, order: to++, display_size: "half" };
+          options.truncateHeaders = { type: "boolean", label: "Truncate column names", default: false, section: TAB.table, order: to++, display_size: "half" };
+          options.sizeToFit = { type: "boolean", label: "Size columns to fit", default: true, section: TAB.table, order: to++, display_size: "half" };
+          options.minColWidth = { type: "number", label: "Minimum column width (px)", default: 0, section: TAB.table, order: to++, display_size: "half" };
 
-          // a bold heading + separator line before each field's controls
-          function addHeading(f, section, order) {
-            var fn = (f.label_short || f.label || f.name);
-            options["hd_" + keyify(f.name)] = {
-              type: "string",
-              label: "\u2500\u2500\u2500\u2500\u2500  " + fn.toUpperCase() + "  \u2500\u2500\u2500\u2500\u2500",
-              section: section, order: order,
-              placeholder: "settings for " + fn + " \u2193 (leave blank)"
-            };
-          }
-          function addHeaderControls(f, section, oref) {
-            var id = keyify(f.name), fn = f.label_short || f.label || f.name;
+          // shared per-field controls; heading folded into lbl_ (the first control)
+          function addCommonHeader(f, section, oref) {
+            var id = keyify(f.name), cur = (f.label_short || f.label || f.name);
+            options["lbl_" + id] = { type: "string", label: headingLabel(f), section: section, order: oref.o++, placeholder: cur };
             options["img_" + id] = { type: "string", label: "Header image URL", section: section, order: oref.o++, placeholder: "https://\u2026" };
-            options["imgpos_" + id] = { type: "string", label: "Image position", display: "select", values: [{ Above: "above" }, { Below: "below" }, { Left: "left" }, { Right: "right" }], default: "above", section: section, order: oref.o++, display_size: "half" };
+            options["imgpos_" + id] = { type: "string", label: "Image position", display: "select", values: [{ Left: "left" }, { Above: "above" }, { Below: "below" }, { Right: "right" }], default: "above", section: section, order: oref.o++, display_size: "half" };
             options["imgsize_" + id] = { type: "number", label: "Image size (px)", default: 20, section: section, order: oref.o++, display_size: "half" };
-            options["suppress_" + id] = { type: "boolean", label: "Hide header text", default: false, section: section, order: oref.o++, display_size: "half" };
-            options["align_" + id] = { type: "string", label: "Text align", display: "select", values: [{ Default: "" }, { Left: "left" }, { Center: "center" }, { Right: "right" }], default: "", section: section, order: oref.o++, display_size: "half" };
+          }
+          function addAlign(f, section, oref) {
+            options["align_" + keyify(f.name)] = { type: "string", label: "Text align", display: "select", values: [{ Default: "" }, { Left: "left" }, { Center: "center" }, { Right: "right" }], default: "", section: section, order: oref.o++, display_size: "half" };
+          }
+          function addFontStyle(f, section, oref) {
+            var id = keyify(f.name);
+            options["bold_" + id] = { type: "boolean", label: "Bold", default: false, section: section, order: oref.o++, display_size: "third" };
+            options["italic_" + id] = { type: "boolean", label: "Italic", default: false, section: section, order: oref.o++, display_size: "third" };
+            options["underline_" + id] = { type: "boolean", label: "Underline", default: false, section: section, order: oref.o++, display_size: "third" };
+          }
+          function addColors(f, section, oref) {
+            var id = keyify(f.name);
+            options["fontcolor_" + id] = { type: "string", label: "Font color", display: "color", section: section, order: oref.o++, display_size: "half" };
+            options["bg_" + id] = { type: "string", label: "Background", display: "color", section: section, order: oref.o++, display_size: "half" };
+          }
+          function addTooltip(f, section, oref) {
+            options["tooltip_" + keyify(f.name)] = { type: "boolean", label: "Custom tooltip", default: false, section: section, order: oref.o++ };
           }
 
           // ---------- DIMENSIONS tab ----------
           var dref = { o: 100 };
           dims.forEach(function (f) {
-            addHeading(f, TAB.dims, dref.o++);
-            addHeaderControls(f, TAB.dims, dref);
+            addCommonHeader(f, TAB.dims, dref);
+            addAlign(f, TAB.dims, dref);
+            options["width_" + keyify(f.name)] = { type: "string", label: "Column width", section: TAB.dims, order: dref.o++, display_size: "half", placeholder: "auto" };
+            addFontStyle(f, TAB.dims, dref);
+            addColors(f, TAB.dims, dref);
+            addTooltip(f, TAB.dims, dref);
           });
 
           // ---------- MEASURES tab ----------
+          var fmtVals = [{ Default: "" }, { "1,234": "#,##0" }, { "1,234.5": "#,##0.0" }, { "1,234.56": "#,##0.00" }, { "12%": "0%" }, { "12.3%": "0.0%" }, { "12.34%": "0.00%" }, { "$1,234": "$#,##0" }, { "$1,234.56": "$#,##0.00" }];
           var mref = { o: 100 };
           measures.forEach(function (f) {
             var id = keyify(f.name);
-            addHeading(f, TAB.meas, mref.o++);
-            addHeaderControls(f, TAB.meas, mref);
-            options["agg_" + id] = { type: "string", label: "Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: "sum", section: TAB.meas, order: mref.o++, display_size: "half" };
-            options["bar_" + id] = { type: "boolean", label: "Show in-cell bar", default: false, section: TAB.meas, order: mref.o++, display_size: "half" };
-            options["barcolor_" + id] = { type: "string", label: "Bar color", display: "color", default: "#bfdbfe", section: TAB.meas, order: mref.o++, display_size: "half" };
+            addCommonHeader(f, TAB.meas, mref);
+            options["fmt_" + id] = { type: "string", label: "Number format", display: "select", values: fmtVals, default: "", section: TAB.meas, order: mref.o++, display_size: "half" };
+            addAlign(f, TAB.meas, mref);
+            // Percent/ratio-formatted measures default to Average — summing a rate is meaningless (would show e.g. 1,522%). User can override.
+            var isPct = f.value_format && String(f.value_format).indexOf("%") >= 0;
+            options["agg_" + id] = { type: "string", label: "Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: isPct ? "average" : "sum", section: TAB.meas, order: mref.o++ };
+            options["bar_" + id] = { type: "boolean", label: "Cell visualization", default: false, section: TAB.meas, order: mref.o++ };
+            options["barcolor_" + id] = { type: "string", label: "Bar color", display: "color", default: "#bfdbfe", section: TAB.meas, order: mref.o++ };
             options["cf_" + id] = { type: "string", label: "Conditional formatting", display: "select", values: [{ None: "none" }, { "Color scale": "scale" }, { "Threshold rules": "rule" }], default: "none", section: TAB.meas, order: mref.o++ };
             options["cflo_" + id] = { type: "string", label: "Scale: low color", display: "color", default: "#fecaca", section: TAB.meas, order: mref.o++, display_size: "half" };
             options["cfhi_" + id] = { type: "string", label: "Scale: high color", display: "color", default: "#bbf7d0", section: TAB.meas, order: mref.o++, display_size: "half" };
-            // up to 3 threshold rules
             for (var ri = 1; ri <= 3; ri++) {
               var sfx = ri === 1 ? "" : String(ri);
               options["cfop" + sfx + "_" + id] = { type: "string", label: "Rule " + ri + ": operator", display: "select", values: [{ "\u2265": ">=" }, { ">": ">" }, { "\u2264": "<=" }, { "<": "<" }, { "=": "=" }], default: ">=", section: TAB.meas, order: mref.o++, display_size: "half" };
               options["cfval" + sfx + "_" + id] = { type: "number", label: "Rule " + ri + ": value", section: TAB.meas, order: mref.o++, display_size: "half" };
               options["cfbg" + sfx + "_" + id] = { type: "string", label: "Rule " + ri + ": cell color", display: "color", default: "#dcfce7", section: TAB.meas, order: mref.o++ };
             }
+            addFontStyle(f, TAB.meas, mref);
+            addColors(f, TAB.meas, mref);
+            addTooltip(f, TAB.meas, mref);
           });
 
           this.trigger("registerOptions", options);
@@ -560,27 +621,42 @@
           var cfg = {
             transpose: !!config.transpose,
             showSubtotals: config.showSubtotals !== false,
-            subtotalDepth: config.subtotalDepth || 0,
+            subtotalDepth: 0,
             defaultCollapsed: !!config.defaultCollapsed,
             calcOthers: !!config.calcOthers,
             calcOthersLimit: config.calcOthersLimit || 10,
             bodyFontSize: config.bodyFontSize || 12,
+            truncate: config.truncate !== false,
+            truncateHeaders: !!config.truncateHeaders,
+            sizeToFit: config.sizeToFit !== false,
+            minColWidth: config.minColWidth || 0,
             headers: {}, cellViz: {}, conditionalFormat: {}, measureAgg: {}
           };
+          // Subtotal Depth: selected dimension name -> depth cutoff (index+1); "" = all levels
+          if (config.subtotalDepth) {
+            for (var di = 0; di < dims.length; di++) { if (dims[di].name === config.subtotalDepth) { cfg.subtotalDepth = di + 1; break; } }
+          }
           function readHeader(f) {
-            var id = keyify(f.name);
-            var h = {};
+            var id = keyify(f.name), h = {};
+            if (config["lbl_" + id]) h.label = config["lbl_" + id];
             if (config["img_" + id]) h.image = config["img_" + id];
             if (config["imgpos_" + id]) h.imagePos = config["imgpos_" + id];
             if (config["imgsize_" + id]) h.imageSize = config["imgsize_" + id];
-            if (config["suppress_" + id]) h.suppressText = true;
             if (config["align_" + id]) h.textAlign = config["align_" + id];
+            if (config["width_" + id]) h.width = config["width_" + id];
+            if (config["bold_" + id]) h.bold = true;
+            if (config["italic_" + id]) h.italic = true;
+            if (config["underline_" + id]) h.underline = true;
+            if (config["fontcolor_" + id]) h.color = config["fontcolor_" + id];
+            if (config["bg_" + id]) h.background = config["bg_" + id];
+            if (config["tooltip_" + id]) h.tooltip = true;
             cfg.headers[f.name] = h;
           }
           dims.forEach(readHeader);
           measures.forEach(function (f) {
             readHeader(f);
             var id = keyify(f.name);
+            if (config["fmt_" + id]) cfg.headers[f.name].numberFormat = config["fmt_" + id];
             if (config["agg_" + id]) cfg.measureAgg[f.name] = config["agg_" + id];
             if (config["bar_" + id]) cfg.cellViz[f.name] = { bar: true, barColor: config["barcolor_" + id] || "#bfdbfe" };
             var cf = config["cf_" + id];
