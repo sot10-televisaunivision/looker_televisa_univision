@@ -6,9 +6,17 @@
  *   - Per-dimension click-to-collapse at EVERY level (built-in Table behavior)
  *   - Per-column header controls: image-by-URL, position, size, hide-text, align, color
  *   - In-cell bars (per measure, toggle on)
- *   - Conditional formatting (per measure): color scale or a threshold rule
+ *   - Conditional formatting (per measure): color scale OR up to 3 threshold rules
  *   - Subtotals per group with per-measure aggregation (sum / average / min / max / ratio)
+ *   - Subtotal depth control (limit subtotals to the outermost N dimension levels)
+ *   - Calculate Others (keep Top-N groups, roll the rest into an "Others" row)
+ *   - Transpose (measures become rows, dimension combos become columns)
+ *   - Pivot-driven spanning column headers (group measure columns under each pivot value)
  *   - Drill-to-Explore on measure cells (via Looker's cell markup)
+ *
+ * The edit/options panel is organized into three tabs — Table, Dimensions,
+ * Measures — and each field gets a bold heading + separator line before its
+ * controls so the settings list is easy to scroll.
  *
  * Works two ways:
  *   1) Inside Looker (registers itself as "collapsible_report_table")
@@ -16,6 +24,9 @@
  */
 (function () {
   "use strict";
+
+  var COLSEP = "\u0002"; // internal separator for measure+pivot column ids
+  var PATHSEP = "\u0001"; // internal separator for tree node paths
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -50,27 +61,43 @@
     return hexLerp(colors[i], colors[i + 1], lt);
   }
 
-  function aggregate(rows, measures, measureAgg) {
+  // read a measure value from a row, honoring an optional pivot key
+  function mval(row, mname, pkey) {
+    var cell = row[mname];
+    if (cell == null) return null;
+    if (pkey != null) { var pc = cell[pkey]; return pc ? pc.value : null; }
+    return cell.value;
+  }
+  // the Looker cell object for a measure, honoring an optional pivot key
+  function mcell(row, mname, pkey) {
+    var cell = row[mname];
+    if (cell == null) return {};
+    if (pkey != null) return cell[pkey] || {};
+    return cell;
+  }
+
+  // aggregate a set of rows over a list of measure-columns (mcols)
+  function aggregate(rows, mcols, measureAgg) {
     var out = {};
-    measures.forEach(function (mf) {
-      var spec = (measureAgg && measureAgg[mf.name]) || "sum";
+    mcols.forEach(function (mc) {
+      var mf = mc.mf, spec = (measureAgg && measureAgg[mf.name]) || "sum";
       if (spec && spec.ratio) {
         var num = 0, den = 0;
         rows.forEach(function (r) {
-          num += Number((r[spec.ratio[0]] || {}).value) || 0;
-          den += Number((r[spec.ratio[1]] || {}).value) || 0;
+          num += Number(mval(r, spec.ratio[0], mc.pkey)) || 0;
+          den += Number(mval(r, spec.ratio[1], mc.pkey)) || 0;
         });
-        out[mf.name] = den ? num / den : null;
+        out[mc.colId] = den ? num / den : null;
         return;
       }
       var mode = (typeof spec === "string") ? spec : "sum";
       var vals = [];
-      rows.forEach(function (r) { var x = (r[mf.name] || {}).value; if (x != null && !isNaN(x)) vals.push(Number(x)); });
-      if (!vals.length) { out[mf.name] = null; return; }
-      if (mode === "average" || mode === "avg") out[mf.name] = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
-      else if (mode === "min") out[mf.name] = Math.min.apply(null, vals);
-      else if (mode === "max") out[mf.name] = Math.max.apply(null, vals);
-      else out[mf.name] = vals.reduce(function (a, b) { return a + b; }, 0);
+      rows.forEach(function (r) { var x = mval(r, mf.name, mc.pkey); if (x != null && !isNaN(x)) vals.push(Number(x)); });
+      if (!vals.length) { out[mc.colId] = null; return; }
+      if (mode === "average" || mode === "avg") out[mc.colId] = vals.reduce(function (a, b) { return a + b; }, 0) / vals.length;
+      else if (mode === "min") out[mc.colId] = Math.min.apply(null, vals);
+      else if (mode === "max") out[mc.colId] = Math.max.apply(null, vals);
+      else out[mc.colId] = vals.reduce(function (a, b) { return a + b; }, 0);
     });
     return out;
   }
@@ -103,79 +130,120 @@
     return esc(formatter ? formatter(v) : (v == null ? "" : String(v)));
   }
 
+  // build the list of measure-columns (measure x pivot) used for rendering
+  function buildMeasureCols(measures, pivots) {
+    var mcols = [];
+    if (pivots && pivots.length) {
+      pivots.forEach(function (p) {
+        measures.forEach(function (mf) { mcols.push({ mf: mf, pkey: p.key, pivot: p, colId: mf.name + COLSEP + p.key }); });
+      });
+    } else {
+      measures.forEach(function (mf) { mcols.push({ mf: mf, pkey: null, pivot: null, colId: mf.name }); });
+    }
+    return mcols;
+  }
+
   window.renderCollapsibleTable = function (container, data, queryResponse, config, utils) {
     config = config || {};
     var fields = queryResponse.fields || {};
     var dims = fields.dimensions || [];
     var measures = (fields.measures || []).concat(fields.table_calculations || []);
-    var cols = dims.concat(measures);
+    var pivots = queryResponse.pivots || [];
+
+    if (!data || !data.length) { container.innerHTML = '<div style="padding:16px;font-family:Arial;color:#64748b;">No results</div>'; return; }
+
+    if (config.transpose) { renderTransposed(container, data, queryResponse, config, utils, dims, measures); return; }
+
+    var mcols = buildMeasureCols(measures, pivots);
     var lastDim = dims.length - 1;
     var showSub = config.showSubtotals !== false;
+    var subDepth = config.subtotalDepth || 0; // 0 = all levels
     var headers = config.headers || {};
     var measureAgg = config.measureAgg || {};
     var cellViz = config.cellViz || {};
     var condFmt = config.conditionalFormat || {};
     var collapsed = container.__collapsedState || (container.__collapsedState = new Set());
 
-    if (!data || !data.length) { container.innerHTML = '<div style="padding:16px;font-family:Arial;color:#64748b;">No results</div>'; return; }
-
     var fmt = {};
     measures.forEach(function (mf) { fmt[mf.name] = makeFormatter(mf.value_format); });
 
-    // per-measure min/max across leaf data (for bars + color scales)
+    // per-column min/max across leaf data (for bars + color scales)
     var stats = {};
-    measures.forEach(function (mf) {
+    mcols.forEach(function (mc) {
       var mn = Infinity, mx = -Infinity;
-      data.forEach(function (r) { var x = Number((r[mf.name] || {}).value); if (!isNaN(x)) { if (x < mn) mn = x; if (x > mx) mx = x; } });
-      stats[mf.name] = { min: mn, max: mx };
+      data.forEach(function (r) { var x = Number(mval(r, mc.mf.name, mc.pkey)); if (!isNaN(x)) { if (x < mn) mn = x; if (x > mx) mx = x; } });
+      stats[mc.colId] = { min: mn, max: mx };
     });
 
     // ---- no-dimension fallback: flat table ----
     if (!dims.length) {
-      renderFlat(container, data, measures, fmt, headers, cellViz, condFmt, stats, config, utils);
+      renderFlat(container, data, mcols, fmt, headers, cellViz, condFmt, stats, config, utils, pivots, measures);
       return;
     }
 
     var tree = buildTree(data, dims);
 
-    function pk(parentNode, key) { return (parentNode.__path || "") + "\u0001" + key; }
+    function pk(parentNode, key) { return (parentNode.__path || "") + PATHSEP + key; }
     (function assign(node) { node.childOrder.forEach(function (k) { var c = node.children.get(k); c.__path = pk(node, k); assign(c); }); })(tree);
+
+    // ---- Calculate Others: keep Top-N root groups, roll the rest into "Others" ----
+    if (config.calcOthers && tree.childOrder.length > (config.calcOthersLimit || 10)) {
+      var limit = config.calcOthersLimit || 10;
+      var keep = tree.childOrder.slice(0, limit);
+      var drop = tree.childOrder.slice(limit);
+      var otherRows = [];
+      drop.forEach(function (k) { otherRows = otherRows.concat(tree.children.get(k).rows); tree.children.delete(k); });
+      var otherNode = {
+        key: "Others", level: 0, dimName: dims[0].name,
+        value: { value: "Others", rendered: "Others" },
+        children: new Map(), childOrder: [], rows: otherRows, __path: PATHSEP + "Others", __others: true
+      };
+      tree.children.set("Others", otherNode);
+      tree.childOrder = keep.concat(["Others"]);
+    }
 
     if (!container.__seeded && config.defaultCollapsed) {
       (function seed(node) {
         node.childOrder.forEach(function (k) {
           var c = node.children.get(k);
-          if (c.level < lastDim) { collapsed.add(c.__path); seed(c); }
+          if (c.level < lastDim && !c.__others) { collapsed.add(c.__path); seed(c); }
         });
       })(tree);
     }
     container.__seeded = true;
+
+    function subAllowed(level) { return showSub && (subDepth === 0 || level < subDepth); }
 
     // ---- produce ordered list of visible rows ----
     var vis = [];
     (function walk(node) {
       node.childOrder.forEach(function (k) {
         var c = node.children.get(k);
-        var isCollapsed = collapsed.has(c.__path) && c.level < lastDim;
+        var canCollapse = c.level < lastDim && !c.__others;
+        var isCollapsed = collapsed.has(c.__path) && canCollapse;
         var keys = keysFor(c);
-        if (isCollapsed) {
-          vis.push({ kind: "collapsed", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, measures, measureAgg) });
-        } else if (c.level === lastDim) {
-          c.rows.forEach(function (r) {
-            var mv = {}; measures.forEach(function (mf) { mv[mf.name] = (r[mf.name] || {}).value; });
-            vis.push({ kind: "data", node: c, atLevel: c.level, keys: keys, row: r, measures: mv });
-          });
-          if (showSub && c.rows.length > 1) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, measures, measureAgg) });
+        if (c.__others || c.level === lastDim || isCollapsed) {
+          if (isCollapsed) {
+            vis.push({ kind: "collapsed", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg) });
+          } else if (c.__others) {
+            vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg), othersLabel: true });
+          } else { // leaf level
+            c.rows.forEach(function (r) {
+              var mv = {}; mcols.forEach(function (mc) { mv[mc.colId] = mval(r, mc.mf.name, mc.pkey); });
+              vis.push({ kind: "data", node: c, atLevel: c.level, keys: keys, row: r, measures: mv });
+            });
+            if (subAllowed(c.level) && c.rows.length > 1) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg) });
+          }
         } else {
           walk(c);
-          if (showSub) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, measures, measureAgg) });
+          if (subAllowed(c.level)) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg) });
         }
       });
     })(tree);
 
     function keysFor(node) {
       var arr = new Array(dims.length).fill(undefined);
-      var parts = node.__path.split("\u0001").slice(1);
+      var parts = node.__path.split(PATHSEP).slice(1);
       for (var i = 0; i < parts.length; i++) arr[i] = parts[i];
       return arr;
     }
@@ -192,7 +260,7 @@
         var j = i + 1;
         while (j < vis.length && samePrefix(vis[i].keys, vis[j].keys, c)) j++;
         var nodeAtC = nodeByKeys(tree, vis[i].keys, c);
-        var collapsible = nodeAtC && nodeAtC.level < lastDim;
+        var collapsible = nodeAtC && nodeAtC.level < lastDim && !nodeAtC.__others;
         grid[i][c] = {
           render: true, span: j - i,
           cell: nodeAtC ? nodeAtC.value : null,
@@ -205,16 +273,13 @@
       }
     }
 
-    var hHeight = 0;
-    cols.forEach(function (f) { var h = (headers[f.name] || {}).headerHeight; if (h) hHeight = Math.max(hHeight, h); });
-
-    var thead = "<thead><tr>" + cols.map(function (f, idx) { return headerCell(f, idx < dims.length, headers, hHeight); }).join("") + "</tr></thead>";
+    var thead = buildThead(dims, measures, mcols, pivots, headers);
 
     var caretOpen = "\u25be", caretClosed = "\u25b8";
     var body = vis.map(function (row, ri) {
       var tds = "";
-      for (var c = 0; c < dims.length; c++) {
-        var g = grid[ri][c];
+      for (var cc = 0; cc < dims.length; cc++) {
+        var g = grid[ri][cc];
         if (!g || g.render === false) continue;
         if (g.empty) { tds += '<td class="dimc empty"></td>'; continue; }
         var caret = g.caret ? '<span class="caret" data-path="' + esc(g.path) + '">' + (g.isCollapsed ? caretClosed : caretOpen) + "</span> " : "";
@@ -222,9 +287,7 @@
         tds += '<td class="dimc" rowspan="' + g.span + '">' + caret + dval + "</td>";
       }
       var mcls = row.kind === "data" ? "mnum" : "mnum agg";
-      measures.forEach(function (mf) {
-        tds += measureCell(mf, row, fmt, stats, cellViz, condFmt, mcls, utils);
-      });
+      mcols.forEach(function (mc) { tds += measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils); });
       var rowCls = row.kind === "data" ? "datarow" : (row.kind === "collapsed" ? "collapsedrow" : "subrow");
       return '<tr class="' + rowCls + '">' + tds + "</tr>";
     }).join("");
@@ -233,13 +296,39 @@
     wireCarets(container, data, queryResponse, config, utils);
   };
 
+  // ---- header (supports pivot-driven spanning header row) ----
+  function buildThead(dims, measures, mcols, pivots, headers) {
+    var hHeight = 0;
+    dims.concat(measures).forEach(function (f) { var h = (headers[f.name] || {}).headerHeight; if (h) hHeight = Math.max(hHeight, h); });
+
+    if (pivots && pivots.length) {
+      // top row: dim columns rowspan 2, then a spanning cell per pivot value
+      var top = "<tr>";
+      dims.forEach(function (f, idx) { top += headerCell(f, true, headers, hHeight, 2, 1); });
+      pivots.forEach(function (p) {
+        var lbl = esc((p.metadata && p.metadata[Object.keys(p.metadata)[0]] && p.metadata[Object.keys(p.metadata)[0]].value) || p.label || p.key);
+        top += '<th class="pivgrp" colspan="' + measures.length + '">' + lbl + "</th>";
+      });
+      top += "</tr>";
+      // second row: one measure header per pivot value
+      var bottom = "<tr>";
+      mcols.forEach(function (mc) { bottom += headerCell(mc.mf, false, headers, hHeight, 1, 1); });
+      bottom += "</tr>";
+      return "<thead>" + top + bottom + "</thead>";
+    }
+    var cells = dims.map(function (f) { return headerCell(f, true, headers, hHeight, 1, 1); })
+      .concat(measures.map(function (f) { return headerCell(f, false, headers, hHeight, 1, 1); }));
+    return "<thead><tr>" + cells.join("") + "</tr></thead>";
+  }
+
   // ---- shared cell/header renderers ----
-  function measureCell(mf, row, fmt, stats, cellViz, condFmt, mcls, utils) {
-    var v = row.measures[mf.name];
-    var st = stats[mf.name] || { min: 0, max: 0 };
+  function measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils) {
+    var mf = mc.mf;
+    var v = row.measures[mc.colId];
+    var st = stats[mc.colId] || { min: 0, max: 0 };
     var tdStyle = "";
     var content;
-    if (row.kind === "data") content = cellDisplay(row.row[mf.name] || {}, fmt[mf.name], utils);
+    if (row.kind === "data") content = cellDisplay(mcell(row.row, mf.name, mc.pkey), fmt[mf.name], utils);
     else content = esc(fmt[mf.name](v));
     var inner = '<span class="cellval">' + content + "</span>";
 
@@ -263,7 +352,7 @@
     return '<td class="' + mcls + '" style="' + tdStyle + '">' + inner + "</td>";
   }
 
-  function headerCell(f, isDim, headers, hHeight) {
+  function headerCell(f, isDim, headers, hHeight, rowspan, colspan) {
     var hc = headers[f.name] || {};
     var pos = hc.imagePos || "above", size = hc.imageSize || 20, pad = hc.imagePad != null ? hc.imagePad : 4;
     var align = hc.textAlign || (isDim ? "left" : "right");
@@ -275,7 +364,70 @@
     var style = "display:flex;flex-direction:" + flexDir + ";align-items:center;justify-content:" + justify + ";gap:" + pad + "px;" +
       (hc.color ? "color:" + hc.color + ";" : "") + (hc.fontSize ? "font-size:" + hc.fontSize + "px;" : "");
     var thStyle = (hc.background ? "background:" + hc.background + ";" : "") + "text-align:" + align + ";" + (hHeight ? "height:" + hHeight + "px;" : "");
-    return '<th style="' + thStyle + '"><div style="' + style + '">' + img + (text ? '<span>' + text + "</span>" : "") + "</div></th>";
+    var attrs = (rowspan && rowspan > 1 ? ' rowspan="' + rowspan + '"' : "") + (colspan && colspan > 1 ? ' colspan="' + colspan + '"' : "");
+    return '<th' + attrs + ' style="' + thStyle + '"><div style="' + style + '">' + img + (text ? '<span>' + text + "</span>" : "") + "</div></th>";
+  }
+
+  // ---- transpose: measures as rows, dimension combos as columns ----
+  function renderTransposed(container, data, queryResponse, config, utils, dims, measures) {
+    var fmt = {};
+    measures.forEach(function (mf) { fmt[mf.name] = makeFormatter(mf.value_format); });
+    var headers = config.headers || {};
+    var cellViz = config.cellViz || {};
+    var condFmt = config.conditionalFormat || {};
+
+    // each data row becomes a column, labeled by its dimension values
+    function colLabel(r) {
+      if (!dims.length) return "Value";
+      return dims.map(function (d) { var c = r[d.name] || {}; return c.rendered != null ? c.rendered : c.value; }).join(" \u203a ");
+    }
+
+    // per-measure stats across the row (for bars + scales)
+    var stats = {};
+    measures.forEach(function (mf) {
+      var mn = Infinity, mx = -Infinity;
+      data.forEach(function (r) { var x = Number((r[mf.name] || {}).value); if (!isNaN(x)) { if (x < mn) mn = x; if (x > mx) mx = x; } });
+      stats[mf.name] = { min: mn, max: mx };
+    });
+
+    var thead = "<thead><tr><th class=\"corner\"></th>" + data.map(function (r) {
+      return '<th class="tcol">' + esc(colLabel(r)) + "</th>";
+    }).join("") + "</tr></thead>";
+
+    var body = measures.map(function (mf) {
+      var hc = headers[mf.name] || {};
+      var size = hc.imageSize || 18;
+      var icon = hc.image ? '<img src="' + esc(hc.image) + '" style="width:' + size + "px;height:" + size + 'px;object-fit:contain;vertical-align:middle;margin-right:6px;" onerror="this.style.display=\'none\'"/>' : "";
+      var label = hc.suppressText ? "" : esc(mf.label_short || mf.label || mf.name);
+      var rowHtml = '<th class="trowh">' + icon + label + "</th>";
+      var st = stats[mf.name] || { min: 0, max: 0 };
+      data.forEach(function (r) {
+        var v = (r[mf.name] || {}).value;
+        var tdStyle = "", inner = '<span class="cellval">' + cellDisplay(r[mf.name] || {}, fmt[mf.name], utils) + "</span>";
+        var cf = condFmt[mf.name];
+        if (cf && cf.type === "scale" && v != null && !isNaN(v) && st.max > st.min) {
+          var t = Math.max(0, Math.min(1, (Number(v) - st.min) / (st.max - st.min)));
+          tdStyle += "background:" + scaleColor(cf.colors, t) + ";";
+        } else if (cf && cf.type === "threshold" && v != null && !isNaN(v)) {
+          for (var ti = 0; ti < cf.rules.length; ti++) {
+            var ru = cf.rules[ti], nv = Number(v), ok = false;
+            if (ru.op === ">=") ok = nv >= ru.value; else if (ru.op === "<") ok = nv < ru.value;
+            else if (ru.op === ">") ok = nv > ru.value; else if (ru.op === "<=") ok = nv <= ru.value; else if (ru.op === "=") ok = nv === ru.value;
+            if (ok) { if (ru.bg) tdStyle += "background:" + ru.bg + ";"; if (ru.color) tdStyle += "color:" + ru.color + ";"; break; }
+          }
+        }
+        var cv = cellViz[mf.name];
+        if (cv && cv.bar && v != null && !isNaN(v) && st.max > 0) {
+          var pct = Math.max(0, Math.min(100, (Number(v) / st.max) * 100));
+          inner = '<div class="cellbar" style="width:' + pct + "%;background:" + (cv.barColor || "#bfdbfe") + ';"></div>' + inner;
+        }
+        rowHtml += '<td class="mnum" style="' + tdStyle + '">' + inner + "</td>";
+      });
+      return "<tr class='datarow'>" + rowHtml + "</tr>";
+    }).join("");
+
+    container.innerHTML = styleBlock(config) +
+      '<table class="crt transposed"><thead>' + thead.replace(/^<thead>|<\/thead>$/g, "") + "</thead><tbody>" + body + "</tbody></table>";
   }
 
   function styleBlock(config) {
@@ -283,6 +435,7 @@
     return '<style>' +
       '.crt{border-collapse:collapse;width:100%;font-family:Roboto,Arial,sans-serif;font-size:' + bodyFont + 'px;color:#1f2937;}' +
       '.crt th{border-bottom:2px solid #cbd5e1;padding:6px 10px;background:#f8fafc;position:sticky;top:0;z-index:2;}' +
+      '.crt th.pivgrp{text-align:center;border-left:1px solid #e2e8f0;border-right:1px solid #e2e8f0;font-weight:700;}' +
       '.crt td{padding:5px 10px;border-bottom:1px solid #eef2f7;}' +
       '.crt td.mnum{text-align:right;font-variant-numeric:tabular-nums;position:relative;overflow:hidden;}' +
       '.crt .cellbar{position:absolute;left:0;top:3px;bottom:3px;border-radius:2px;z-index:0;opacity:.6;}' +
@@ -294,6 +447,8 @@
       '.crt tr.datarow:hover{background:#f9fafb;}' +
       '.crt .caret{cursor:pointer;color:#2563eb;user-select:none;font-size:' + (bodyFont + 1) + 'px;}' +
       '.crt td.empty{background:#fff;}' +
+      '.crt.transposed th.trowh{text-align:left;background:#fff;font-weight:600;white-space:nowrap;}' +
+      '.crt.transposed th.tcol{text-align:right;} .crt.transposed th.corner{background:#f8fafc;}' +
       '</style>';
   }
 
@@ -310,11 +465,12 @@
     }
   }
 
-  function renderFlat(container, data, measures, fmt, headers, cellViz, condFmt, stats, config, utils) {
-    var thead = "<thead><tr>" + measures.map(function (f) { return headerCell(f, false, headers, 0); }).join("") + "</tr></thead>";
+  function renderFlat(container, data, mcols, fmt, headers, cellViz, condFmt, stats, config, utils, pivots, measures) {
+    var thead = buildThead([], measures, mcols, pivots, headers);
     var body = data.map(function (r) {
-      var tds = measures.map(function (mf) {
-        return measureCell(mf, { kind: "data", row: r, measures: (function () { var o = {}; measures.forEach(function (m) { o[m.name] = (r[m.name] || {}).value; }); return o; })() }, fmt, stats, cellViz, condFmt, "mnum", utils);
+      var mv = {}; mcols.forEach(function (mc) { mv[mc.colId] = mval(r, mc.mf.name, mc.pkey); });
+      var tds = mcols.map(function (mc) {
+        return measureCell(mc, { kind: "data", row: r, measures: mv }, fmt, stats, cellViz, condFmt, "mnum", utils);
       }).join("");
       return "<tr class='datarow'>" + tds + "</tr>";
     }).join("");
@@ -338,44 +494,76 @@
           var dims = fields.dimensions || [];
           var measures = (fields.measures || []).concat(fields.table_calculations || []);
 
-          // ---- build dynamic per-column options for the config panel ----
-          var options = {
-            showSubtotals: { type: "boolean", label: "Show subtotals", default: true, section: "Table", order: 1 },
-            defaultCollapsed: { type: "boolean", label: "Start collapsed", default: false, section: "Table", order: 2 },
-            bodyFontSize: { type: "number", label: "Body font size (px)", default: 12, section: "Table", order: 3 }
-          };
-          // Fixed sections so the options panel shows a few short tabs, each a
-          // vertical list, instead of one tab per column (which overflows/jumbles).
-          var HDR = "Headers", FMT = "Formatting";
-          var ho = 10, fo = 1000;
-          function addHeaderOpts(f) {
-            var id = keyify(f.name), fn = f.label_short || f.label || f.name;
-            options["img_" + id] = { type: "string", label: fn + " — Header image URL", section: HDR, order: ho++, placeholder: "https://…" };
-            options["imgpos_" + id] = { type: "string", label: fn + " — Image position", display: "select", values: [{ Above: "above" }, { Below: "below" }, { Left: "left" }, { Right: "right" }], default: "above", section: HDR, order: ho++ };
-            options["imgsize_" + id] = { type: "number", label: fn + " — Image size (px)", default: 20, section: HDR, order: ho++ };
-            options["suppress_" + id] = { type: "boolean", label: fn + " — Hide header text", default: false, section: HDR, order: ho++ };
-            options["align_" + id] = { type: "string", label: fn + " — Text align", display: "select", values: [{ Default: "" }, { Left: "left" }, { Center: "center" }, { Right: "right" }], default: "", section: HDR, order: ho++ };
+          var options = {};
+          var TAB = { table: "Table", dims: "Dimensions", meas: "Measures" };
+
+          // ---------- TABLE tab (global) ----------
+          var to = 1;
+          options.transpose = { type: "boolean", label: "Transpose (measures as rows)", default: false, section: TAB.table, order: to++ };
+          options.showSubtotals = { type: "boolean", label: "Show subtotals", default: true, section: TAB.table, order: to++ };
+          options.subtotalDepth = { type: "number", label: "Subtotal depth (0 = all levels)", default: 0, section: TAB.table, order: to++, display_size: "half" };
+          options.defaultCollapsed = { type: "boolean", label: "Start collapsed", default: false, section: TAB.table, order: to++, display_size: "half" };
+          options.calcOthers = { type: "boolean", label: "Calculate Others (Top-N + Others row)", default: false, section: TAB.table, order: to++, display_size: "half" };
+          options.calcOthersLimit = { type: "number", label: "Keep top N groups", default: 10, section: TAB.table, order: to++, display_size: "half" };
+          options.bodyFontSize = { type: "number", label: "Body font size (px)", default: 12, section: TAB.table, order: to++ };
+
+          // a bold heading + separator line before each field's controls
+          function addHeading(f, section, order) {
+            var fn = (f.label_short || f.label || f.name);
+            options["hd_" + keyify(f.name)] = {
+              type: "string",
+              label: "\u2500\u2500\u2500\u2500\u2500  " + fn.toUpperCase() + "  \u2500\u2500\u2500\u2500\u2500",
+              section: section, order: order,
+              placeholder: "settings for " + fn + " \u2193 (leave blank)"
+            };
           }
-          dims.forEach(addHeaderOpts);
-          measures.forEach(function (f) {
-            addHeaderOpts(f);
+          function addHeaderControls(f, section, oref) {
             var id = keyify(f.name), fn = f.label_short || f.label || f.name;
-            options["agg_" + id] = { type: "string", label: fn + " — Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: "sum", section: FMT, order: fo++ };
-            options["bar_" + id] = { type: "boolean", label: fn + " — Show in-cell bar", default: false, section: FMT, order: fo++ };
-            options["barcolor_" + id] = { type: "string", label: fn + " — Bar color", display: "color", default: "#bfdbfe", section: FMT, order: fo++ };
-            options["cf_" + id] = { type: "string", label: fn + " — Conditional formatting", display: "select", values: [{ None: "none" }, { "Color scale": "scale" }, { "Threshold rule": "rule" }], default: "none", section: FMT, order: fo++ };
-            options["cflo_" + id] = { type: "string", label: fn + " — Scale: low color", display: "color", default: "#fecaca", section: FMT, order: fo++ };
-            options["cfhi_" + id] = { type: "string", label: fn + " — Scale: high color", display: "color", default: "#bbf7d0", section: FMT, order: fo++ };
-            options["cfop_" + id] = { type: "string", label: fn + " — Rule: operator", display: "select", values: [{ "≥": ">=" }, { ">": ">" }, { "≤": "<=" }, { "<": "<" }, { "=": "=" }], default: ">=", section: FMT, order: fo++ };
-            options["cfval_" + id] = { type: "number", label: fn + " — Rule: value", section: FMT, order: fo++ };
-            options["cfbg_" + id] = { type: "string", label: fn + " — Rule: cell color", display: "color", default: "#dcfce7", section: FMT, order: fo++ };
+            options["img_" + id] = { type: "string", label: "Header image URL", section: section, order: oref.o++, placeholder: "https://\u2026" };
+            options["imgpos_" + id] = { type: "string", label: "Image position", display: "select", values: [{ Above: "above" }, { Below: "below" }, { Left: "left" }, { Right: "right" }], default: "above", section: section, order: oref.o++, display_size: "half" };
+            options["imgsize_" + id] = { type: "number", label: "Image size (px)", default: 20, section: section, order: oref.o++, display_size: "half" };
+            options["suppress_" + id] = { type: "boolean", label: "Hide header text", default: false, section: section, order: oref.o++, display_size: "half" };
+            options["align_" + id] = { type: "string", label: "Text align", display: "select", values: [{ Default: "" }, { Left: "left" }, { Center: "center" }, { Right: "right" }], default: "", section: section, order: oref.o++, display_size: "half" };
+          }
+
+          // ---------- DIMENSIONS tab ----------
+          var dref = { o: 100 };
+          dims.forEach(function (f) {
+            addHeading(f, TAB.dims, dref.o++);
+            addHeaderControls(f, TAB.dims, dref);
           });
+
+          // ---------- MEASURES tab ----------
+          var mref = { o: 100 };
+          measures.forEach(function (f) {
+            var id = keyify(f.name);
+            addHeading(f, TAB.meas, mref.o++);
+            addHeaderControls(f, TAB.meas, mref);
+            options["agg_" + id] = { type: "string", label: "Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: "sum", section: TAB.meas, order: mref.o++, display_size: "half" };
+            options["bar_" + id] = { type: "boolean", label: "Show in-cell bar", default: false, section: TAB.meas, order: mref.o++, display_size: "half" };
+            options["barcolor_" + id] = { type: "string", label: "Bar color", display: "color", default: "#bfdbfe", section: TAB.meas, order: mref.o++, display_size: "half" };
+            options["cf_" + id] = { type: "string", label: "Conditional formatting", display: "select", values: [{ None: "none" }, { "Color scale": "scale" }, { "Threshold rules": "rule" }], default: "none", section: TAB.meas, order: mref.o++ };
+            options["cflo_" + id] = { type: "string", label: "Scale: low color", display: "color", default: "#fecaca", section: TAB.meas, order: mref.o++, display_size: "half" };
+            options["cfhi_" + id] = { type: "string", label: "Scale: high color", display: "color", default: "#bbf7d0", section: TAB.meas, order: mref.o++, display_size: "half" };
+            // up to 3 threshold rules
+            for (var ri = 1; ri <= 3; ri++) {
+              var sfx = ri === 1 ? "" : String(ri);
+              options["cfop" + sfx + "_" + id] = { type: "string", label: "Rule " + ri + ": operator", display: "select", values: [{ "\u2265": ">=" }, { ">": ">" }, { "\u2264": "<=" }, { "<": "<" }, { "=": "=" }], default: ">=", section: TAB.meas, order: mref.o++, display_size: "half" };
+              options["cfval" + sfx + "_" + id] = { type: "number", label: "Rule " + ri + ": value", section: TAB.meas, order: mref.o++, display_size: "half" };
+              options["cfbg" + sfx + "_" + id] = { type: "string", label: "Rule " + ri + ": cell color", display: "color", default: "#dcfce7", section: TAB.meas, order: mref.o++ };
+            }
+          });
+
           this.trigger("registerOptions", options);
 
           // ---- map flat config -> nested config for the renderer ----
           var cfg = {
+            transpose: !!config.transpose,
             showSubtotals: config.showSubtotals !== false,
+            subtotalDepth: config.subtotalDepth || 0,
             defaultCollapsed: !!config.defaultCollapsed,
+            calcOthers: !!config.calcOthers,
+            calcOthersLimit: config.calcOthersLimit || 10,
             bodyFontSize: config.bodyFontSize || 12,
             headers: {}, cellViz: {}, conditionalFormat: {}, measureAgg: {}
           };
@@ -396,8 +584,16 @@
             if (config["agg_" + id]) cfg.measureAgg[f.name] = config["agg_" + id];
             if (config["bar_" + id]) cfg.cellViz[f.name] = { bar: true, barColor: config["barcolor_" + id] || "#bfdbfe" };
             var cf = config["cf_" + id];
-            if (cf === "scale") cfg.conditionalFormat[f.name] = { type: "scale", colors: [config["cflo_" + id] || "#fecaca", config["cfhi_" + id] || "#bbf7d0"] };
-            else if (cf === "rule") cfg.conditionalFormat[f.name] = { type: "threshold", rules: [{ op: config["cfop_" + id] || ">=", value: config["cfval_" + id], bg: config["cfbg_" + id] || "#dcfce7" }] };
+            if (cf === "scale") {
+              cfg.conditionalFormat[f.name] = { type: "scale", colors: [config["cflo_" + id] || "#fecaca", config["cfhi_" + id] || "#bbf7d0"] };
+            } else if (cf === "rule") {
+              var rules = [];
+              [["cfop_", "cfval_", "cfbg_"], ["cfop2_", "cfval2_", "cfbg2_"], ["cfop3_", "cfval3_", "cfbg3_"]].forEach(function (t) {
+                var val = config[t[1] + id];
+                if (val != null && val !== "") rules.push({ op: config[t[0] + id] || ">=", value: Number(val), bg: config[t[2] + id] || "#dcfce7" });
+              });
+              if (rules.length) cfg.conditionalFormat[f.name] = { type: "threshold", rules: rules };
+            }
           });
 
           var utils = (typeof LookerCharts !== "undefined" && LookerCharts.Utils) ? LookerCharts.Utils : null;
