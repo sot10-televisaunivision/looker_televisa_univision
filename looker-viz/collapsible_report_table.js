@@ -344,28 +344,31 @@
             defaultCollapsed: { type: "boolean", label: "Start collapsed", default: false, section: "Table", order: 2 },
             bodyFontSize: { type: "number", label: "Body font size (px)", default: 12, section: "Table", order: 3 }
           };
-          function addCommon(f, secOrder) {
-            var id = keyify(f.name), sec = f.label_short || f.label || f.name, o = 0;
-            options["img_" + id] = { type: "string", label: "Header image URL", section: sec, order: ++o, placeholder: "https://…" };
-            options["imgpos_" + id] = { type: "string", label: "Image position", display: "select", values: [{ Above: "above" }, { Below: "below" }, { Left: "left" }, { Right: "right" }], default: "above", section: sec, order: ++o };
-            options["imgsize_" + id] = { type: "number", label: "Image size (px)", default: 20, section: sec, order: ++o };
-            options["suppress_" + id] = { type: "boolean", label: "Hide header text", default: false, section: sec, order: ++o };
-            options["align_" + id] = { type: "string", label: "Text align", display: "select", values: [{ Default: "" }, { Left: "left" }, { Center: "center" }, { Right: "right" }], default: "", section: sec, order: ++o };
-            return o;
+          // Fixed sections so the options panel shows a few short tabs, each a
+          // vertical list, instead of one tab per column (which overflows/jumbles).
+          var HDR = "Headers", FMT = "Formatting";
+          var ho = 10, fo = 1000;
+          function addHeaderOpts(f) {
+            var id = keyify(f.name), fn = f.label_short || f.label || f.name;
+            options["img_" + id] = { type: "string", label: fn + " — Header image URL", section: HDR, order: ho++, placeholder: "https://…" };
+            options["imgpos_" + id] = { type: "string", label: fn + " — Image position", display: "select", values: [{ Above: "above" }, { Below: "below" }, { Left: "left" }, { Right: "right" }], default: "above", section: HDR, order: ho++ };
+            options["imgsize_" + id] = { type: "number", label: fn + " — Image size (px)", default: 20, section: HDR, order: ho++ };
+            options["suppress_" + id] = { type: "boolean", label: fn + " — Hide header text", default: false, section: HDR, order: ho++ };
+            options["align_" + id] = { type: "string", label: fn + " — Text align", display: "select", values: [{ Default: "" }, { Left: "left" }, { Center: "center" }, { Right: "right" }], default: "", section: HDR, order: ho++ };
           }
-          dims.forEach(function (f) { addCommon(f); });
+          dims.forEach(addHeaderOpts);
           measures.forEach(function (f) {
-            var id = keyify(f.name), sec = f.label_short || f.label || f.name;
-            var o = addCommon(f);
-            options["agg_" + id] = { type: "string", label: "Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: "sum", section: sec, order: ++o };
-            options["bar_" + id] = { type: "boolean", label: "Show in-cell bar", default: false, section: sec, order: ++o };
-            options["barcolor_" + id] = { type: "string", label: "Bar color", display: "color", default: "#bfdbfe", section: sec, order: ++o };
-            options["cf_" + id] = { type: "string", label: "Conditional formatting", display: "select", values: [{ None: "none" }, { "Color scale": "scale" }, { "Threshold rule": "rule" }], default: "none", section: sec, order: ++o };
-            options["cflo_" + id] = { type: "string", label: "Scale: low color", display: "color", default: "#fecaca", section: sec, order: ++o };
-            options["cfhi_" + id] = { type: "string", label: "Scale: high color", display: "color", default: "#bbf7d0", section: sec, order: ++o };
-            options["cfop_" + id] = { type: "string", label: "Rule: operator", display: "select", values: [{ "≥": ">=" }, { ">": ">" }, { "≤": "<=" }, { "<": "<" }, { "=": "=" }], default: ">=", section: sec, order: ++o };
-            options["cfval_" + id] = { type: "number", label: "Rule: value", section: sec, order: ++o };
-            options["cfbg_" + id] = { type: "string", label: "Rule: cell color", display: "color", default: "#dcfce7", section: sec, order: ++o };
+            addHeaderOpts(f);
+            var id = keyify(f.name), fn = f.label_short || f.label || f.name;
+            options["agg_" + id] = { type: "string", label: fn + " — Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: "sum", section: FMT, order: fo++ };
+            options["bar_" + id] = { type: "boolean", label: fn + " — Show in-cell bar", default: false, section: FMT, order: fo++ };
+            options["barcolor_" + id] = { type: "string", label: fn + " — Bar color", display: "color", default: "#bfdbfe", section: FMT, order: fo++ };
+            options["cf_" + id] = { type: "string", label: fn + " — Conditional formatting", display: "select", values: [{ None: "none" }, { "Color scale": "scale" }, { "Threshold rule": "rule" }], default: "none", section: FMT, order: fo++ };
+            options["cflo_" + id] = { type: "string", label: fn + " — Scale: low color", display: "color", default: "#fecaca", section: FMT, order: fo++ };
+            options["cfhi_" + id] = { type: "string", label: fn + " — Scale: high color", display: "color", default: "#bbf7d0", section: FMT, order: fo++ };
+            options["cfop_" + id] = { type: "string", label: fn + " — Rule: operator", display: "select", values: [{ "≥": ">=" }, { ">": ">" }, { "≤": "<=" }, { "<": "<" }, { "=": "=" }], default: ">=", section: FMT, order: fo++ };
+            options["cfval_" + id] = { type: "number", label: fn + " — Rule: value", section: FMT, order: fo++ };
+            options["cfbg_" + id] = { type: "string", label: fn + " — Rule: cell color", display: "color", default: "#dcfce7", section: FMT, order: fo++ };
           });
           this.trigger("registerOptions", options);
 
