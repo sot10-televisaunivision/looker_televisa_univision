@@ -293,14 +293,19 @@
               var mv = {}; mcols.forEach(function (mc) { mv[mc.colId] = mval(r, mc.mf.name, mc.pkey); });
               vis.push({ kind: "data", node: c, atLevel: c.level, keys: keys, row: r, measures: mv });
             });
-            if (subAllowed(c.level) && c.rows.length > 1) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg) });
+            if (subAllowed(c.level) && c.rows.length > 1) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg), __label: true });
           }
         } else {
           walk(c);
-          if (subAllowed(c.level)) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg) });
+          if (subAllowed(c.level)) vis.push({ kind: "sub", node: c, atLevel: c.level, keys: keys, measures: aggregate(c.rows, mcols, measureAgg), __label: true });
         }
       });
     })(tree);
+
+    // Grand total row (labelled "Total"), shown whenever subtotals are enabled.
+    if (showSub && vis.length) {
+      vis.push({ kind: "total", atLevel: -1, keys: new Array(dims.length).fill(undefined), measures: aggregate(data, mcols, measureAgg), __label: true });
+    }
 
     function keysFor(node) {
       var arr = new Array(dims.length).fill(undefined);
@@ -319,7 +324,10 @@
         var row = vis[i];
         if (row.keys[c] === undefined) { grid[i][c] = { empty: true }; i++; continue; }
         var j = i + 1;
-        while (j < vis.length && samePrefix(vis[i].keys, vis[j].keys, c)) j++;
+        while (j < vis.length && samePrefix(vis[i].keys, vis[j].keys, c)) {
+          if (c === lastDim && vis[j].__label && vis[j].atLevel === lastDim) break; // let a last-level subtotal own its cell for the label
+          j++;
+        }
         var nodeAtC = nodeByKeys(tree, vis[i].keys, c);
         var collapsible = nodeAtC && nodeAtC.level < lastDim && !nodeAtC.__others;
         grid[i][c] = {
@@ -337,7 +345,41 @@
     var thead = buildThead(dims, measures, mcols, pivots, headers, config.truncateHeaders);
 
     var caretOpen = "\u25be", caretClosed = "\u25b8";
+    function subtotalLabelText(row) {
+      if (row.kind === "total") return "Total";
+      var parts = [];
+      for (var L = 0; L <= row.atLevel; L++) {
+        var n = nodeByKeys(tree, row.keys, L);
+        parts.push(n ? (n.value.rendered != null ? n.value.rendered : n.value.value) : row.keys[L]);
+      }
+      return parts.join(" / ") + " Subtotal";
+    }
+    function rowClsFor(row) {
+      if (row.kind === "total") return "totalrow";
+      if (row.kind === "data") return "datarow";
+      if (row.kind === "collapsed") return "collapsedrow";
+      return "subrow";
+    }
+    function measureCellsHtml(row) {
+      var mcls = row.kind === "data" ? "mnum" : "mnum agg";
+      var s = "";
+      mcols.forEach(function (mc) { s += measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils, headers); });
+      return s;
+    }
     var body = vis.map(function (row, ri) {
+      // Subtotal / grand-total rows: a single left-aligned label cell spanning the
+      // free (right-hand) dimension columns, then the aggregated measure cells.
+      if (row.__label) {
+        var labelText = subtotalLabelText(row);
+        var freeStart = row.atLevel + 1;
+        var labelTd;
+        if (freeStart <= lastDim) {
+          labelTd = '<td class="dimc sublabel" colspan="' + (lastDim - freeStart + 1) + '">' + esc(labelText) + "</td>";
+        } else {
+          labelTd = '<td class="dimc sublabel">' + esc(labelText) + "</td>"; // last-level edge: grid freed this cell
+        }
+        return '<tr class="' + rowClsFor(row) + '">' + labelTd + measureCellsHtml(row) + "</tr>";
+      }
       var tds = "";
       for (var cc = 0; cc < dims.length; cc++) {
         var g = grid[ri][cc];
@@ -353,10 +395,7 @@
         var dtitle = dhc.tooltip ? ' title="' + esc((dhc.label || dims[cc].label_short || dims[cc].label || dims[cc].name) + ": " + g.value) + '"' : "";
         tds += '<td class="dimc" rowspan="' + g.span + '" style="' + dstyle + '"' + dtitle + '>' + caret + dval + "</td>";
       }
-      var mcls = row.kind === "data" ? "mnum" : "mnum agg";
-      mcols.forEach(function (mc) { tds += measureCell(mc, row, fmt, stats, cellViz, condFmt, mcls, utils, headers); });
-      var rowCls = row.kind === "data" ? "datarow" : (row.kind === "collapsed" ? "collapsedrow" : "subrow");
-      return '<tr class="' + rowCls + '">' + tds + "</tr>";
+      return '<tr class="' + rowClsFor(row) + '">' + tds + measureCellsHtml(row) + "</tr>";
     }).join("");
 
     container.innerHTML = styleBlock(config) + '<table class="crt">' + thead + "<tbody>" + body + "</tbody></table>";
@@ -522,6 +561,9 @@
       '.crt td.dimc{vertical-align:top;background:#fff;font-weight:600;white-space:nowrap;}' +
       '.crt tr.datarow td.mnum{font-weight:400;}' +
       '.crt tr.subrow{background:#f1f5f9;} .crt tr.subrow td{font-weight:700;border-top:1px solid #cbd5e1;}' +
+      '.crt td.dimc.sublabel{text-align:left;color:#334155;font-weight:700;}' +
+      '.crt tr.totalrow{background:#e2e8f0;} .crt tr.totalrow td{font-weight:800;border-top:2px solid #94a3b8;}' +
+      '.crt tr.totalrow td.sublabel{color:#0f172a;}' +
       '.crt tr.collapsedrow{background:#eef2ff;} .crt tr.collapsedrow td{font-weight:700;}' +
       '.crt tr.datarow:hover{background:#f9fafb;}' +
       '.crt .caret{cursor:pointer;color:#2563eb;user-select:none;font-size:' + (bodyFont + 1) + 'px;}' +
@@ -598,18 +640,19 @@
           // options API has no standalone divider/heading control.
           function headingLabel(f) {
             var fn = (f.label_short || f.label || f.name);
-            return "\u2500\u2500\u2500\u2500\u2500  " + fn.toUpperCase() + "  \u2500\u2500\u2500\u2500\u2500\nLabel";
+            return "\u2500\u2500\u2500\u2500\u2500  " + fn.toUpperCase() + "  \u2500\u2500\u2500\u2500\u2500";
           }
 
           // ---------- TABLE tab (global) ----------
           var to = 1;
           options.transpose = { type: "boolean", label: "Transpose (measures as rows)", default: false, section: TAB.table, order: to++ };
           options.showSubtotals = { type: "boolean", label: "Show subtotals", default: true, section: TAB.table, order: to++ };
+          options.defaultCollapsed = { type: "boolean", label: "Start collapsed", default: false, section: TAB.table, order: to++ };
           var depthVals = [{ "All levels": "" }];
-          dims.forEach(function (f) { var o = {}; o[(f.label_short || f.label || f.name)] = f.name; depthVals.push(o); });
+          // Omit the most granular dimension: the leaf rows already ARE the subtotal at that level.
+          dims.slice(0, -1).forEach(function (f) { var o = {}; o[(f.label_short || f.label || f.name)] = f.name; depthVals.push(o); });
           options.subtotalDepth = { type: "string", label: "Subtotal Depth", display: "select", values: depthVals, default: "", section: TAB.table, order: to++ };
           options.bodyFontSize = { type: "number", label: "Body font size (px)", default: 12, section: TAB.table, order: to++, display_size: "half" };
-          options.defaultCollapsed = { type: "boolean", label: "Start collapsed", default: false, section: TAB.table, order: to++, display_size: "half" };
           options.calcOthers = { type: "boolean", label: "Calculate Others (Top-N + Others row)", default: false, section: TAB.table, order: to++ };
           options.calcOthersLimit = { type: "number", label: "Keep top N groups", default: 10, section: TAB.table, order: to++ };
           options.truncate = { type: "boolean", label: "Truncate text", default: true, section: TAB.table, order: to++, display_size: "half" };
@@ -686,6 +729,9 @@
             addTooltip(f, TAB.meas, mref);
           });
 
+          // Stack every control on its own line so long toggle labels don't wrap:
+          // drop half/third column sizing that packed controls side-by-side.
+          Object.keys(options).forEach(function (k) { if (options[k] && options[k].display_size) delete options[k].display_size; });
           this.trigger("registerOptions", options);
 
           // ---- map flat config -> nested config for the renderer ----
