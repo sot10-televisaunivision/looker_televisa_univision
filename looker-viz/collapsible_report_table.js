@@ -33,6 +33,38 @@
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function keyify(name) { return String(name).replace(/[^a-zA-Z0-9]/g, "_"); }
+
+  // ---- ratio detection: parse a measure's SQL into {num, den} short refs ----
+  // Collect the LAST path segment of every ${...} reference in an expression.
+  function refShorts(expr) {
+    var out = [], re = /\$\{([^}]+)\}/g, m;
+    while ((m = re.exec(expr)) !== null) { var p = m[1].split("."); out.push(p[p.length - 1]); }
+    return out;
+  }
+  // Split a string on its FIRST top-level (paren-depth 0) occurrence of ch.
+  function splitTop(s, ch) {
+    var depth = 0;
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      if (c === "(") depth++;
+      else if (c === ")") depth--;
+      else if (c === ch && depth === 0) return [s.slice(0, i), s.slice(i + 1)];
+    }
+    return null;
+  }
+  // Recognize SAFE_DIVIDE(a,b) / DIVIDE(a,b) / a/b where a and b each reference
+  // exactly one field. Returns {num:<shortRef>, den:<shortRef>} or null.
+  function parseRatio(sql) {
+    if (!sql || typeof sql !== "string") return null;
+    var s = sql.trim(), numExpr = null, denExpr = null;
+    var sd = s.match(/^[a-zA-Z_]*DIVIDE\s*\(([\s\S]*)\)$/i);
+    if (sd) { var pair = splitTop(sd[1], ","); if (pair) { numExpr = pair[0]; denExpr = pair[1]; } }
+    if (numExpr === null) { var pr = splitTop(s, "/"); if (pr) { numExpr = pr[0]; denExpr = pr[1]; } }
+    if (numExpr === null || denExpr === null) return null;
+    var nrefs = refShorts(numExpr), drefs = refShorts(denExpr);
+    if (nrefs.length !== 1 || drefs.length !== 1) return null;
+    return { num: nrefs[0], den: drefs[0] };
+  }
   function cssLen(v) { v = String(v == null ? "" : v).trim(); if (v === "") return ""; return /^\d+(\.\d+)?$/.test(v) ? v + "px" : v; }
   function fontStyleCss(hc) {
     var s = "";
@@ -90,13 +122,33 @@
     var out = {};
     mcols.forEach(function (mc) {
       var mf = mc.mf, spec = (measureAgg && measureAgg[mf.name]) || "sum";
-      if (spec && spec.ratio) {
-        var num = 0, den = 0;
+      // Exact ratio subtotal: reconstruct numerator & denominator per leaf row
+      // from the leaf rate plus whichever component is on the tile, then take
+      // Sum(numerator) / Sum(denominator) so the subtotal is a true weighted ratio.
+      if (spec && spec.ratioSolve) {
+        var rs = spec.ratioSolve, sumN = 0, sumD = 0, any = false;
         rows.forEach(function (r) {
-          num += Number(mval(r, spec.ratio[0], mc.pkey)) || 0;
-          den += Number(mval(r, spec.ratio[1], mc.pkey)) || 0;
+          var rate = mval(r, rs.rate, mc.pkey);
+          if (rate == null || isNaN(rate)) return;      // skip rows with no rate
+          rate = Number(rate);
+          var nv = rs.num ? mval(r, rs.num, mc.pkey) : null;
+          var dv = rs.den ? mval(r, rs.den, mc.pkey) : null;
+          var ni, di;
+          if (rs.num && rs.den) {                        // both components present
+            if (nv == null || isNaN(nv) || dv == null || isNaN(dv)) return;
+            ni = Number(nv); di = Number(dv);
+          } else if (rs.den) {                           // denominator present -> num = rate*den
+            if (dv == null || isNaN(dv)) return;
+            di = Number(dv); ni = rate * di;
+          } else if (rs.num) {                           // numerator present -> den = num/rate
+            if (nv == null || isNaN(nv)) return;
+            ni = Number(nv);
+            if (rate === 0) return;                       // 0/0 indeterminate denominator -> skip row
+            di = ni / rate;
+          } else { return; }                             // neither component -> can't reconstruct
+          sumN += ni; sumD += di; any = true;
         });
-        out[mc.colId] = den ? num / den : null;
+        out[mc.colId] = (any && sumD) ? sumN / sumD : null;  // null -> blank subtotal
         return;
       }
       var mode = (typeof spec === "string") ? spec : "sum";
@@ -524,6 +576,20 @@
           var dims = fields.dimensions || [];
           var measures = (fields.measures || []).concat(fields.table_calculations || []);
 
+          // Detect ratio measures from their SQL, mapping short refs -> full names.
+          // A ratio is "usable" only if at least one component is also in the query,
+          // so we can reconstruct the missing side at subtotal time.
+          var shortToFull = {};
+          measures.forEach(function (f) { shortToFull[String(f.name).split(".").pop()] = f.name; });
+          var ratioInfo = {};
+          measures.forEach(function (f) {
+            var pr = parseRatio(f.sql);
+            if (!pr) return;
+            var numFull = shortToFull[pr.num] || null, denFull = shortToFull[pr.den] || null;
+            if (!numFull && !denFull) return;            // no component on tile -> can't reconstruct
+            ratioInfo[f.name] = { num: numFull, den: denFull, rate: f.name };
+          });
+
           var options = {};
           var TAB = { table: "Table", dims: "Dimensions", meas: "Measures" };
 
@@ -596,9 +662,14 @@
             addCommonHeader(f, TAB.meas, mref);
             options["fmt_" + id] = { type: "string", label: "Number format", display: "select", values: fmtVals, default: "", section: TAB.meas, order: mref.o++, display_size: "half" };
             addAlign(f, TAB.meas, mref);
-            // Percent/ratio-formatted measures default to Average — summing a rate is meaningless (would show e.g. 1,522%). User can override.
+            // Ratio measures (num/den detected from SQL) default to exact Ratio: reconstruct
+            // components per row and Sum(num)/Sum(den). Other percent-formatted measures
+            // default to Average since summing a rate is meaningless. User can override either.
+            var isRatio = !!ratioInfo[f.name];
             var isPct = f.value_format && String(f.value_format).indexOf("%") >= 0;
-            options["agg_" + id] = { type: "string", label: "Subtotal aggregation", display: "select", values: [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }], default: isPct ? "average" : "sum", section: TAB.meas, order: mref.o++ };
+            var aggVals = [{ Sum: "sum" }, { Average: "average" }, { Min: "min" }, { Max: "max" }];
+            if (isRatio) aggVals.unshift({ "Ratio (exact)": "ratio" });
+            options["agg_" + id] = { type: "string", label: "Subtotal aggregation", display: "select", values: aggVals, default: isRatio ? "ratio" : (isPct ? "average" : "sum"), section: TAB.meas, order: mref.o++ };
             options["bar_" + id] = { type: "boolean", label: "Cell visualization", default: false, section: TAB.meas, order: mref.o++ };
             options["barcolor_" + id] = { type: "string", label: "Bar color", display: "color", default: "#bfdbfe", section: TAB.meas, order: mref.o++ };
             options["cf_" + id] = { type: "string", label: "Conditional formatting", display: "select", values: [{ None: "none" }, { "Color scale": "scale" }, { "Threshold rules": "rule" }], default: "none", section: TAB.meas, order: mref.o++ };
@@ -657,7 +728,11 @@
             readHeader(f);
             var id = keyify(f.name);
             if (config["fmt_" + id]) cfg.headers[f.name].numberFormat = config["fmt_" + id];
-            if (config["agg_" + id]) cfg.measureAgg[f.name] = config["agg_" + id];
+            if (config["agg_" + id]) {
+              var av = config["agg_" + id];
+              if (av === "ratio") cfg.measureAgg[f.name] = ratioInfo[f.name] ? { ratioSolve: ratioInfo[f.name] } : "sum";
+              else cfg.measureAgg[f.name] = av;
+            }
             if (config["bar_" + id]) cfg.cellViz[f.name] = { bar: true, barColor: config["barcolor_" + id] || "#bfdbfe" };
             var cf = config["cf_" + id];
             if (cf === "scale") {
