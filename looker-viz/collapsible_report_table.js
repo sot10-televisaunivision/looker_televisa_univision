@@ -263,15 +263,21 @@
       tree.childOrder = keep.concat(["Others"]);
     }
 
-    if (!container.__seeded && config.defaultCollapsed) {
+    // "Start collapsed": collapse all groups when the toggle turns on (and re-expand
+    // when it turns off). Tracked per container so re-renders don't fight manual toggles.
+    var wantCollapse = !!config.defaultCollapsed;
+    if (container.__lastDefaultCollapsed === undefined) container.__lastDefaultCollapsed = false;
+    if (wantCollapse && !container.__lastDefaultCollapsed) {
       (function seed(node) {
         node.childOrder.forEach(function (k) {
           var c = node.children.get(k);
           if (c.level < lastDim && !c.__others) { collapsed.add(c.__path); seed(c); }
         });
       })(tree);
+    } else if (!wantCollapse && container.__lastDefaultCollapsed) {
+      collapsed.clear();
     }
-    container.__seeded = true;
+    container.__lastDefaultCollapsed = wantCollapse;
 
     function subAllowed(level) { return showSub && (subDepth === 0 || level < subDepth); }
 
@@ -350,7 +356,9 @@
       var parts = [];
       for (var L = 0; L <= row.atLevel; L++) {
         var n = nodeByKeys(tree, row.keys, L);
-        parts.push(n ? (n.value.rendered != null ? n.value.rendered : n.value.value) : row.keys[L]);
+        var v = n ? (n.value.rendered != null ? n.value.rendered : n.value.value) : row.keys[L];
+        if (v == null || String(v).trim() === "") v = "Null"; // empty dimension value
+        parts.push(v);
       }
       return parts.join(" / ") + " Subtotal";
     }
@@ -561,7 +569,7 @@
       '.crt td.dimc{vertical-align:top;background:#fff;font-weight:600;white-space:nowrap;}' +
       '.crt tr.datarow td.mnum{font-weight:400;}' +
       '.crt tr.subrow{background:#f1f5f9;} .crt tr.subrow td{font-weight:700;border-top:1px solid #cbd5e1;}' +
-      '.crt td.dimc.sublabel{text-align:left;color:#334155;font-weight:700;}' +
+      '.crt td.dimc.sublabel{text-align:left;color:#334155;font-weight:800;background:transparent;}' +
       '.crt tr.totalrow{background:#e2e8f0;} .crt tr.totalrow td{font-weight:800;border-top:2px solid #94a3b8;}' +
       '.crt tr.totalrow td.sublabel{color:#0f172a;}' +
       '.crt tr.collapsedrow{background:#eef2ff;} .crt tr.collapsedrow td{font-weight:700;}' +
@@ -699,7 +707,7 @@
 
           // ---------- MEASURES tab ----------
           var fmtVals = [{ Default: "" }, { "1,234": "#,##0" }, { "1,234.5": "#,##0.0" }, { "1,234.56": "#,##0.00" }, { "12%": "0%" }, { "12.3%": "0.0%" }, { "12.34%": "0.00%" }, { "$1,234": "$#,##0" }, { "$1,234.56": "$#,##0.00" }];
-          var mref = { o: 100 };
+          var mref = { o: 500 };
           measures.forEach(function (f) {
             var id = keyify(f.name);
             addCommonHeader(f, TAB.meas, mref);
