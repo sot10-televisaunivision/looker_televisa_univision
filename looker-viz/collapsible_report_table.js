@@ -782,11 +782,13 @@
             readHeader(f);
             var id = keyify(f.name);
             if (config["fmt_" + id]) cfg.headers[f.name].numberFormat = config["fmt_" + id];
-            if (config["agg_" + id]) {
-              var av = config["agg_" + id];
-              if (av === "ratio") cfg.measureAgg[f.name] = ratioInfo[f.name] ? { ratioSolve: ratioInfo[f.name] } : "sum";
-              else cfg.measureAgg[f.name] = av;
-            }
+            // Effective aggregation must mirror the option's default so a detected
+            // ratio computes exact Ratio even before the user touches the dropdown.
+            var isRatioM = !!ratioInfo[f.name];
+            var isPctM = f.value_format && String(f.value_format).indexOf("%") >= 0;
+            var av = config["agg_" + id] || (isRatioM ? "ratio" : (isPctM ? "average" : "sum"));
+            if (av === "ratio") cfg.measureAgg[f.name] = ratioInfo[f.name] ? { ratioSolve: ratioInfo[f.name] } : "sum";
+            else cfg.measureAgg[f.name] = av;
             if (config["bar_" + id]) cfg.cellViz[f.name] = { bar: true, barColor: config["barcolor_" + id] || "#bfdbfe" };
             var cf = config["cf_" + id];
             if (cf === "scale") {
