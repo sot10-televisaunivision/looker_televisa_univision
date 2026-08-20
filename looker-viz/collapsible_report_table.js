@@ -641,7 +641,11 @@
           });
 
           var options = {};
-          var TAB = { table: "Table", dims: "Dimensions", meas: "Measures" };
+          // Looker sorts the settings-panel tabs alphabetically. A leading space
+          // sorts before letters but is stripped from the displayed label, so
+          // " Table" renders as "Table" yet lands ahead of Dimensions/Measures
+          // (which are already in alphabetical order).
+          var TAB = { table: " Table", dims: "Dimensions", meas: "Measures" };
 
           // Each field's heading is folded into its FIRST control's label
           // (a separator line + the field name), because the custom-viz
