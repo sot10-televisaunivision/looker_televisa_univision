@@ -45,7 +45,7 @@ tbody td {
   font-size: 34px;                  /* the value */
   font-weight: 800;
   line-height: 1.05;
-  padding: 52px 14px 18px;          /* top room so the value clears the badge */
+  padding: 68px 14px 18px;          /* top room so the value clears the badge (extra space below the icon so big numbers don't crowd the circle) */
   white-space: nowrap;
 }
 
