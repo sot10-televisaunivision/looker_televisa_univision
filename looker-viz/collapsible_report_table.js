@@ -486,6 +486,8 @@
     var style = "display:flex;flex-direction:" + flexDir + ";align-items:center;justify-content:" + justify + ";gap:" + pad + "px;";
     var textSpan = text ? '<span' + (opts.truncateHeaders ? ' class="trunc"' : "") + '>' + text + "</span>" : "";
     var thStyle = "text-align:" + align + ";" + (hHeight ? "height:" + hHeight + "px;" : "") + (hc.width ? "width:" + cssLen(hc.width) + ";" : "");
+    if (hc.headerColor) thStyle += "color:" + hc.headerColor + ";";
+    if (hc.headerBackground) thStyle += "background:" + hc.headerBackground + ";";
     var attrs = (rowspan && rowspan > 1 ? ' rowspan="' + rowspan + '"' : "") + (colspan && colspan > 1 ? ' colspan="' + colspan + '"' : "");
     return '<th' + attrs + ' style="' + thStyle + '"><div style="' + style + '">' + img + textSpan + "</div></th>";
   }
@@ -691,8 +693,14 @@
           }
           function addColors(f, section, oref) {
             var id = keyify(f.name);
-            options["fontcolor_" + id] = { type: "string", label: "Font color", display: "color", section: section, order: oref.o++, display_size: "half" };
-            options["bg_" + id] = { type: "string", label: "Background", display: "color", section: section, order: oref.o++, display_size: "half" };
+            // Header (column heading / <th>) colors
+            options["hfontcolor_" + id] = { type: "string", label: "Header font color", display: "color", section: section, order: oref.o++, display_size: "half" };
+            options["hbg_" + id] = { type: "string", label: "Header background", display: "color", section: section, order: oref.o++, display_size: "half" };
+            options["hbgnofill_" + id] = { type: "boolean", label: "Header background: no fill", default: false, section: section, order: oref.o++ };
+            // Results (data cell) colors
+            options["fontcolor_" + id] = { type: "string", label: "Results font color", display: "color", section: section, order: oref.o++, display_size: "half" };
+            options["bg_" + id] = { type: "string", label: "Results background", display: "color", section: section, order: oref.o++, display_size: "half" };
+            options["bgnofill_" + id] = { type: "boolean", label: "Results background: no fill", default: false, section: section, order: oref.o++ };
           }
           function addTooltip(f, section, oref) {
             options["tooltip_" + keyify(f.name)] = { type: "boolean", label: "Custom tooltip", default: false, section: section, order: oref.o++ };
@@ -777,7 +785,10 @@
             if (config["italic_" + id]) h.italic = true;
             if (config["underline_" + id]) h.underline = true;
             if (config["fontcolor_" + id]) h.color = config["fontcolor_" + id];
-            if (config["bg_" + id]) h.background = config["bg_" + id];
+            // "no fill" toggle overrides the (hard-to-clear) native color picker.
+            if (config["bg_" + id] && !config["bgnofill_" + id]) h.background = config["bg_" + id];
+            if (config["hfontcolor_" + id]) h.headerColor = config["hfontcolor_" + id];
+            if (config["hbg_" + id] && !config["hbgnofill_" + id]) h.headerBackground = config["hbg_" + id];
             if (config["tooltip_" + id]) h.tooltip = true;
             cfg.headers[f.name] = h;
           }
