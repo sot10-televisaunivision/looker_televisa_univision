@@ -152,7 +152,7 @@ tbody td:nth-child(6)::before {
   background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/ctr.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
 }
 tbody td:nth-child(7)::before {
-  content: "Video Completes";
+  content: "Completes";
   background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_completes.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
 }
 tbody td:nth-child(8)::before {
