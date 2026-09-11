@@ -1,0 +1,173 @@
+/* =====================================================================
+   KPI GRADIENT ROWS — Product Type + nine KPIs
+   Looker Table (Report) theme for multiple data rows
+   =====================================================================
+   Column order:
+   1 Product Type, 2 Impressions, 3 Reach, 4 Frequency,
+   5 Clicks, 6 CTR, 7 Video Completes, 8 VCR, 9 Revenue, 10 CPM
+
+   This is a separate theme from the single-row KPI card theme.
+   Each row keeps the established KPI gradients. Even rows use a clearly
+   darker version of the same colors so adjacent Product Types are easier
+   to follow across the table.
+   ===================================================================== */
+
+/* The card labels are drawn inside each cell, so native headers stay hidden. */
+thead { display: none !important; }
+th { display: none !important; }
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 8px 7px;
+}
+
+tbody, tbody tr { height: auto !important; }
+
+tbody td {
+  position: relative;
+  min-width: 150px;
+  height: 96px;
+  box-sizing: border-box;
+  vertical-align: middle !important;
+  text-align: center !important;
+  border: 0 !important;
+  border-radius: 9px;
+  color: #fff;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.05;
+  padding: 56px 12px 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .12);
+}
+
+/* Looker wraps and right-aligns values; force the visible content back to center. */
+tbody td > * {
+  text-align: center !important;
+  float: none !important;
+  justify-content: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+}
+
+/* Icon + KPI label. */
+tbody td:not(:first-child)::before {
+  position: absolute;
+  top: 11px;
+  left: 12px;
+  right: 12px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding-left: 45px;
+  text-align: left;
+  white-space: normal;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: .35px;
+  text-transform: uppercase;
+  background-repeat: no-repeat, no-repeat;
+  background-position: 7px center, 0 center;
+  background-size: 22px 22px, 36px 36px;
+}
+
+/* First column: Product Type row label. */
+tbody td:first-child {
+  min-width: 175px;
+  max-width: 230px;
+  padding: 45px 18px 17px;
+  text-align: left !important;
+  white-space: normal;
+  font-size: 18px;
+  font-weight: 750;
+  line-height: 1.2;
+  background: linear-gradient(135deg, #2F4770, #1D3154);
+}
+
+tbody td:first-child > * {
+  text-align: left !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  justify-content: flex-start !important;
+}
+
+tbody td:first-child::before {
+  content: "Product Type";
+  position: absolute;
+  top: 14px;
+  left: 18px;
+  right: 18px;
+  color: rgba(255,255,255,.72);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .7px;
+  text-transform: uppercase;
+}
+
+/* Odd rows: established KPI palette. */
+tbody tr:nth-child(odd) td:nth-child(2) { background: linear-gradient(135deg, #14B8A6, #0F8F80); }
+tbody tr:nth-child(odd) td:nth-child(3) { background: linear-gradient(135deg, #3B82F6, #2E66C2); }
+tbody tr:nth-child(odd) td:nth-child(4) { background: linear-gradient(135deg, #6366F1, #4D50BC); }
+tbody tr:nth-child(odd) td:nth-child(5) { background: linear-gradient(135deg, #8B5CF6, #6C48C0); }
+tbody tr:nth-child(odd) td:nth-child(6) { background: linear-gradient(135deg, #06B6D4, #058EA6); }
+tbody tr:nth-child(odd) td:nth-child(7) { background: linear-gradient(135deg, #F97316, #C25A11); }
+tbody tr:nth-child(odd) td:nth-child(8) { background: linear-gradient(135deg, #EC4899, #B83877); }
+tbody tr:nth-child(odd) td:nth-child(9) { background: linear-gradient(135deg, #22C55E, #1A9A49); }
+tbody tr:nth-child(odd) td:nth-child(10) { background: linear-gradient(135deg, #0D9488, #0A736A); }
+
+/* Even rows: clearly darker versions of the same KPI colors. */
+tbody tr:nth-child(even) td:first-child { background: linear-gradient(135deg, #182E50, #0B1A2F); }
+tbody tr:nth-child(even) td:nth-child(2) { background: linear-gradient(135deg, #0A806F, #06574F); }
+tbody tr:nth-child(even) td:nth-child(3) { background: linear-gradient(135deg, #2256AA, #193F7D); }
+tbody tr:nth-child(even) td:nth-child(4) { background: linear-gradient(135deg, #3D40A4, #2C2F75); }
+tbody tr:nth-child(even) td:nth-child(5) { background: linear-gradient(135deg, #582FAB, #41237C); }
+tbody tr:nth-child(even) td:nth-child(6) { background: linear-gradient(135deg, #037388, #025565); }
+tbody tr:nth-child(even) td:nth-child(7) { background: linear-gradient(135deg, #A6410A, #7D3007); }
+tbody tr:nth-child(even) td:nth-child(8) { background: linear-gradient(135deg, #9E295F, #762047); }
+tbody tr:nth-child(even) td:nth-child(9) { background: linear-gradient(135deg, #147A39, #0E5929); }
+tbody tr:nth-child(even) td:nth-child(10) { background: linear-gradient(135deg, #075F57, #04463F); }
+
+/* KPI labels/icons — positions shift by one because Product Type is column 1. */
+tbody td:nth-child(2)::before {
+  content: "Impressions";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/impressions.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(3)::before {
+  content: "Reach";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/reach.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(4)::before {
+  content: "Frequency";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/frequency.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(5)::before {
+  content: "Clicks";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/clicks.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(6)::before {
+  content: "CTR";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/ctr.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(7)::before {
+  content: "Completes";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/video_completes.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(8)::before {
+  content: "VCR";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/vcr.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(9)::before {
+  content: "Revenue";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/revenue.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
+tbody td:nth-child(10)::before {
+  content: "CPM";
+  background-image: url('https://sot10-televisaunivision.github.io/looker_televisa_univision/kpi-icons/svg/cpm.svg'), radial-gradient(circle at 18px 18px, rgba(255,255,255,.94) 17px, transparent 18px);
+}
