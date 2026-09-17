@@ -1,0 +1,288 @@
+/* =====================================================================
+   DIRECT / PG ORDER DETAIL CARD
+   Looker Table (Report) theme — one card per order row
+   =====================================================================
+   Required column order:
+   1 Order ID
+   2 Order Name
+   3 Advertiser Name
+   4 Agency Name
+   5 Order Start Date
+   6 Order End Date
+   7 Order Team
+   8 Salesperson
+   9 Order Type
+   10 Order Status
+   11 Active Lines
+   12 Completed Lines
+   13 Total Lines
+   14 Contracted Total Impressions
+   15 Delivered Impressions
+   16 Total Revenue
+   17 Co-Viewing Impressions
+   18 3rd Party Impressions
+   19 Left to Deliver
+
+   Each result row becomes an order detail card. Order ID and Order Name
+   share the title line, the other eight dimensions form a two-column
+   detail section, and the results form three related three-measure rows.
+   ===================================================================== */
+
+thead,
+th {
+  display: none !important;
+}
+
+table,
+tbody {
+  display: block !important;
+  width: 100% !important;
+  border: 0 !important;
+  border-collapse: separate !important;
+}
+
+tbody tr {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  width: 100% !important;
+  margin: 0 0 18px !important;
+  padding: 20px !important;
+  box-sizing: border-box;
+  background: #FFFFFF;
+  border: 1px solid #D9E2EC !important;
+  border-radius: 16px;
+  box-shadow: 0 5px 18px rgba(20, 40, 77, .10);
+}
+
+tbody td {
+  position: relative;
+  display: block !important;
+  min-width: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  box-sizing: border-box;
+  border: 0 !important;
+  background: transparent;
+  color: #1F3151;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.3;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+tbody td > * {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  float: none !important;
+  text-align: inherit !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+/* Every regular detail occupies one half of the card. */
+tbody td:nth-child(-n+10) {
+  grid-column: span 3;
+  padding: 10px 12px 11px;
+  border-bottom: 1px solid #E5EBF2 !important;
+  text-align: left !important;
+  font-size: 14px;
+  font-weight: 650;
+  overflow-wrap: anywhere !important;
+}
+
+tbody td:nth-child(-n+10)::before {
+  display: block;
+  margin-bottom: 4px;
+  color: #718198;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: .65px;
+  text-transform: uppercase;
+}
+
+/* Order ID and Order Name form one title line. */
+tbody td:nth-child(1),
+tbody td:nth-child(2) {
+  order: 1;
+  min-height: 64px;
+  padding: 2px 5px 13px;
+  border-bottom: 2px solid #27466F !important;
+  color: #14284D;
+  font-weight: 850;
+  line-height: 1.18;
+}
+
+tbody td:nth-child(1) {
+  grid-column: span 1;
+  color: #CC0062;
+  font-size: 21px;
+  white-space: nowrap !important;
+}
+
+tbody td:nth-child(2) {
+  grid-column: span 5;
+  padding-left: 18px;
+  font-size: 24px;
+}
+
+tbody td:nth-child(1)::before,
+tbody td:nth-child(2)::before {
+  color: #718198;
+  font-size: 10px;
+}
+
+tbody td:nth-child(1)::before { content: "Order ID"; }
+tbody td:nth-child(2)::before { content: "Order Name"; }
+
+/* Two-column order detail sequence using the Explore labels. */
+tbody td:nth-child(3) { order: 2; }
+tbody td:nth-child(4) { order: 3; }
+tbody td:nth-child(5) { order: 4; }
+tbody td:nth-child(6) { order: 5; }
+tbody td:nth-child(7) { order: 6; }
+tbody td:nth-child(8) { order: 7; }
+tbody td:nth-child(9) { order: 8; }
+tbody td:nth-child(10) { order: 9; }
+
+tbody td:nth-child(3)::before { content: "Advertiser Name"; }
+tbody td:nth-child(4)::before { content: "Agency Name"; }
+tbody td:nth-child(5)::before { content: "Order Start Date"; }
+tbody td:nth-child(6)::before { content: "Order End Date"; }
+tbody td:nth-child(7)::before { content: "Order Team"; }
+tbody td:nth-child(8)::before { content: "Salesperson"; }
+tbody td:nth-child(9)::before { content: "Order Type"; }
+tbody td:nth-child(10)::before { content: "Order Status"; }
+
+/* Section label between order details and results. */
+tbody tr::after {
+  content: "Measures";
+  order: 10;
+  grid-column: 1 / -1;
+  display: block;
+  margin-top: 10px;
+  padding: 14px 5px 8px;
+  border-top: 1px solid #D9E2EC;
+  color: #52647E;
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+}
+
+/* Three related measures per row, with simple alternating row shading. */
+tbody td:nth-child(n+11) {
+  grid-column: span 2;
+  min-height: 76px !important;
+  padding: 31px 15px 13px;
+  border-top: 1px solid #E0E7EF !important;
+  border-bottom: 1px solid #E0E7EF !important;
+  background: #FFFFFF;
+  text-align: left !important;
+  color: #14284D;
+  font-size: 20px;
+  font-weight: 850;
+  line-height: 1.1;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+
+tbody td:nth-child(n+11)::before {
+  position: absolute;
+  top: 11px;
+  left: 15px;
+  right: 12px;
+  color: #63738A;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: .35px;
+  text-transform: uppercase;
+  white-space: normal;
+}
+
+/* Row 1: line counts. */
+tbody td:nth-child(11),
+tbody td:nth-child(12),
+tbody td:nth-child(13) {
+  order: 11;
+  background: #EEF5FC;
+}
+
+/* Row 2: contracted, delivered, and remaining impressions. */
+tbody td:nth-child(14),
+tbody td:nth-child(15),
+tbody td:nth-child(19) {
+  order: 12;
+  background: #FFFFFF;
+}
+
+/* Row 3: the remaining revenue and delivery measures. */
+tbody td:nth-child(16),
+tbody td:nth-child(17),
+tbody td:nth-child(18) {
+  order: 13;
+  background: #EEF5FC;
+}
+
+/* Cell dividers and rounded ends make each group read as one line. */
+tbody td:nth-child(11),
+tbody td:nth-child(14),
+tbody td:nth-child(16) {
+  border-left: 1px solid #E0E7EF !important;
+  border-radius: 9px 0 0 9px;
+}
+
+tbody td:nth-child(13),
+tbody td:nth-child(19),
+tbody td:nth-child(18) {
+  border-right: 1px solid #E0E7EF !important;
+  border-radius: 0 9px 9px 0;
+}
+
+tbody td:nth-child(11),
+tbody td:nth-child(12),
+tbody td:nth-child(14),
+tbody td:nth-child(15),
+tbody td:nth-child(16),
+tbody td:nth-child(17) {
+  box-shadow: inset -1px 0 0 #E0E7EF;
+}
+
+tbody td:nth-child(11)::before { content: "Active Lines"; }
+tbody td:nth-child(12)::before { content: "Completed Lines"; }
+tbody td:nth-child(13)::before { content: "Total Lines"; }
+tbody td:nth-child(14)::before { content: "Contracted Total Impressions"; }
+tbody td:nth-child(15)::before { content: "Delivered Impressions"; }
+tbody td:nth-child(16)::before { content: "Total Revenue"; }
+tbody td:nth-child(17)::before { content: "Co-Viewing Impressions"; }
+tbody td:nth-child(18)::before { content: "3rd Party Impressions"; }
+tbody td:nth-child(19)::before { content: "Left to Deliver"; }
+
+@media (max-width: 900px) {
+  tbody tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 16px !important;
+  }
+  tbody td:nth-child(-n+10),
+  tbody td:nth-child(1),
+  tbody td:nth-child(2),
+  tbody td:nth-child(n+11),
+  tbody tr::after {
+    grid-column: 1 / -1;
+  }
+  tbody td:nth-child(2) {
+    padding-left: 5px;
+  }
+  tbody td:nth-child(n+11) {
+    border-left: 1px solid #E0E7EF !important;
+    border-right: 1px solid #E0E7EF !important;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+}
